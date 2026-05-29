@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocoonz OS - Record Room</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="auth_check.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
+        .search-input:focus { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+        .glass-sheet { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(20px); }
+    </style>
+</head>
+<body class="min-h-screen text-slate-900 pb-32">
+    
+    <header class="p-6 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-xl z-30 border-b border-slate-100">
+        <div class="flex items-center space-x-4">
+            <button onclick="location.href='admin.html'" class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 active:scale-90 transition-transform">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">Record <span class="text-indigo-600">Room</span></h1>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student & Parent Registry</p>
+            </div>
+        </div>
+        <button onclick="location.href='admission.html'" class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fas fa-plus text-xs"></i></button>
+    </header>
+
+    <main class="p-6">
+        
+        <div class="relative mb-8">
+            <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></i>
+            <input type="text" id="student-search" oninput="filterRecords()" placeholder="Search by name, roll no, or parent..." class="w-full bg-white border border-slate-100 rounded-[1.5rem] py-4 pl-12 pr-6 text-sm font-medium outline-none search-input transition-all shadow-sm">
+        </div>
+
+        <div id="student-registry" class="grid grid-cols-1 gap-4">
+            <!-- Dynamic Records -->
+        </div>
+
+    </main>
+
+    <!-- PTM Profile Modal (The One-Page Truth) -->
+    <div id="details-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end">
+        <div class="bg-white w-full h-[90vh] rounded-t-[3.5rem] p-8 shadow-2xl animate-slide-up overflow-y-auto no-scrollbar">
+            <div class="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-10"></div>
+            
+            <div class="flex items-start justify-between mb-10">
+                <div>
+                    <h2 id="modal-student-name" class="text-4xl font-black text-slate-800 tracking-tight">--</h2>
+                    <p id="modal-student-class" class="text-indigo-600 font-black uppercase text-xs tracking-[0.2em] mt-2">--</p>
+                </div>
+                <div class="bg-slate-50 px-5 py-3 rounded-2xl text-right">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Roll Number</p>
+                    <p id="modal-student-roll" class="font-black text-slate-700 text-lg">--</p>
+                </div>
+            </div>
+
+            <!-- Intelligence Metrics Grid -->
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <div class="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100">
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-4">Attendance (30d)</p>
+                    <h3 id="modal-att-pct" class="text-3xl font-black text-slate-800">--%</h3>
+                    <div id="modal-att-bar" class="w-full h-1.5 bg-slate-200 rounded-full mt-4 overflow-hidden">
+                        <div class="h-full bg-emerald-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100">
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-4">Balance Status</p>
+                    <h3 id="modal-balance" class="text-2xl font-black text-rose-600">₹ --</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-2">Total Paid: ₹<span id="modal-paid">--</span></p>
+                </div>
+            </div>
+
+            <!-- Parent Information -->
+            <div class="bg-indigo-900 p-8 rounded-[3rem] text-white shadow-xl shadow-indigo-100 mb-8 flex justify-between items-center">
+                <div>
+                    <p class="text-indigo-300 text-[10px] font-black uppercase tracking-widest mb-2">Primary Contact</p>
+                    <h3 id="modal-parent-name" class="text-xl font-black">--</h3>
+                    <p id="modal-parent-phone" class="text-indigo-200 font-medium text-sm mt-1">--</p>
+                </div>
+                <div class="flex space-x-2">
+                    <a id="modal-call-btn" href="#" class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur hover:bg-white/20 transition-all"><i class="fas fa-phone"></i></a>
+                    <a id="modal-wa-btn" href="#" class="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20"><i class="fab fa-whatsapp text-lg"></i></a>
+                </div>
+            </div>
+
+            <!-- Recent Activity Timeline -->
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 pl-1">Recent Intelligence</h3>
+            <div id="modal-activity" class="space-y-3 mb-12">
+                <!-- Dynamic Activity Rows -->
+            </div>
+
+            <button onclick="closeModal()" class="w-full bg-slate-900 text-white py-6 rounded-[2.5rem] font-black text-lg active:scale-95 transition-all">Close Intelligence Profile</button>
+        </div>
+    </div>
+
+    <script>
+        let allStudents = [];
+
+        async function loadRecords() {
+            const res = await secureFetch(`${API_BASE}/api/students`);
+            allStudents = await res.json();
+            renderRecords(allStudents);
+        }
+
+        function renderRecords(data) {
+            const registry = document.getElementById('student-registry');
+            registry.innerHTML = data.map(s => `
+                <div onclick="showDetails('${s.id}')" class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-50 flex items-center justify-between active:scale-95 transition-all cursor-pointer group">
+                    <div class="flex items-center space-x-5">
+                        <div class="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-indigo-600 font-black group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                            ${s.name.charAt(0)}
+                        </div>
+                        <div>
+                            <p class="font-black text-slate-800">${s.name}</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${s.class_name}</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-slate-200 text-xs"></i>
+                </div>
+            `).join('');
+        }
+
+        function filterRecords() {
+            const query = document.getElementById('student-search').value.toLowerCase();
+            const filtered = allStudents.filter(s => 
+                s.name.toLowerCase().includes(query) || 
+                s.roll_no.toLowerCase().includes(query) ||
+                s.parent_name.toLowerCase().includes(query)
+            );
+            renderRecords(filtered);
+        }
+
+        async function showDetails(id) {
+            const res = await secureFetch(`${API_BASE}/api/students/profile/${id}`);
+            const p = await res.json();
+            
+            document.getElementById('modal-student-name').innerText = p.student.name;
+            document.getElementById('modal-student-class').innerText = p.student.class + " Operational Profile";
+            document.getElementById('modal-student-roll').innerText = p.student.roll_no;
+            
+            document.getElementById('modal-att-pct').innerText = p.metrics.attendance_30d + "%";
+            document.getElementById('modal-att-bar').firstElementChild.style.width = p.metrics.attendance_30d + "%";
+            document.getElementById('modal-balance').innerText = "₹" + p.metrics.balance.toLocaleString();
+            document.getElementById('modal-paid').innerText = p.metrics.total_paid.toLocaleString();
+
+            document.getElementById('modal-parent-name').innerText = p.student.parent_name;
+            document.getElementById('modal-parent-phone').innerText = p.student.phone;
+            document.getElementById('modal-call-btn').href = `tel:${p.student.phone}`;
+            document.getElementById('modal-wa-btn').href = `https://wa.me/${p.student.phone}`;
+
+            const activity = document.getElementById('modal-activity');
+            activity.innerHTML = p.recent_activity.map(a => `
+                <div class="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-2 h-2 rounded-full ${a.status === 'P' ? 'bg-emerald-500' : 'bg-rose-500'}"></div>
+                        <p class="text-sm font-bold text-slate-700">${new Date(a.date).toLocaleDateString([], {day:'numeric', month:'short'})}</p>
+                    </div>
+                    <p class="text-[10px] font-black uppercase tracking-widest ${a.status === 'P' ? 'text-emerald-600' : 'text-rose-600'}">${a.status === 'P' ? 'Present' : 'Absent'}</p>
+                </div>
+            `).join('');
+
+            document.getElementById('details-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('details-modal').classList.add('hidden');
+        }
+
+        loadRecords();
+    </script>
+    <style>
+        @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</body>
+</html>

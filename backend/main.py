@@ -1,0 +1,689 @@
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Response
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+from typing import List, Optional
+import models, schemas, database
+from database import engine, get_db
+from fastapi.middleware.cors import CORSMiddleware
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+import os
+import secrets
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+import logging
+
+# Setup Logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+# Production DB Migrations (Alembic) should be used instead of create_all
+if os.getenv("ENV") != "production":
+    models.Base.metadata.create_all(bind=engine)
+
+limiter = Limiter(key_func=get_remote_address)
+app = FastAPI(title="CRM Cocoonz API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return Response(
+        content='{"detail": "Internal Server Error"}',
+        status_code=500,
+        media_type="application/json"
+    )
+
+# Auth Config
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY or len(SECRET_KEY) < 32 or SECRET_KEY == "dev_secret_key":
+    raise RuntimeError("FATAL: A strong SECRET_KEY (min 32 chars) must be set in environment variables for production.")
+
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 480))
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def get_token(request: Request):
+    token = request.cookies.get("access_token")
+    if not token:
+        auth = request.headers.get("Authorization")
+        if auth and auth.startswith("Bearer "):
+            token = auth.split(" ")[1]
+    return token
+
+async def get_current_user(request: Request, db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    token = get_token(request)
+    if not token:
+        raise credentials_exception
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Serve Frontend
+app.mount("/frontend", StaticFiles(directory="../frontend"), name="frontend")
+
+@app.get("/")
+def read_root():
+    return FileResponse("../frontend/login.html")
+
+# CORS Config
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+        if not request.url.path.startswith("/token") and not request.url.path.startswith("/frontend"):
+            cookie_csrf = request.cookies.get("csrf_token")
+            header_csrf = request.headers.get("X-CSRF-Token")
+            if not cookie_csrf or not header_csrf or cookie_csrf != header_csrf:
+                return Response("CSRF token validation failed", status_code=403)
+    response = await call_next(request)
+    return response
+
+def check_role(user: models.User, allowed_roles: List[str]):
+    if user.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Insufficient permissions"
+        )
+
+# --- Auth Endpoints ---
+@app.post("/token")
+@limiter.limit("10/minute")
+async def login_for_access_token(request: Request, response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    
+    # Set HttpOnly cookie for JWT
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False, # Set to True in actual prod with HTTPS
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
+    
+    # Set double-submit CSRF token
+    csrf_token = secrets.token_hex(32)
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,
+        secure=False,
+        samesite="lax"
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
+
+@app.post("/api/logout")
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    response.delete_cookie("csrf_token")
+    return {"status": "success"}
+
+@app.post("/api/users", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    db_user = models.User(
+        username=user.username,
+        password_hash=get_password_hash(user.password),
+        role=user.role
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@app.get("/api/users", response_model=List[schemas.User])
+def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    return db.query(models.User).all()
+
+# --- Classes ---
+@app.post("/api/classes", response_model=schemas.Class)
+def create_class(class_data: schemas.ClassCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    db_class = models.Class(name=class_data.name, section=class_data.section)
+    db.add(db_class)
+    try:
+        db.commit()
+        db.refresh(db_class)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Class already exists")
+    return db_class
+
+@app.get("/api/classes", response_model=List[schemas.Class])
+def get_classes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "TEACHER", "ACCOUNTANT"])
+    return db.query(models.Class).all()
+
+# --- Parents ---
+@app.get("/api/parents", response_model=List[schemas.Parent])
+def get_parents(phone: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "TEACHER"])
+    query = db.query(models.Parent)
+    if phone:
+        query = query.filter(models.Parent.primary_phone == phone)
+    return query.all()
+
+# --- Students ---
+@app.post("/api/students", response_model=schemas.Student)
+def create_student(student_data: schemas.StudentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    parent_id = student_data.parent_id
+    
+    # If a new parent object is provided, create/link it
+    if student_data.parent:
+        existing_parent = db.query(models.Parent).filter(models.Parent.primary_phone == student_data.parent.primary_phone).first()
+        if existing_parent:
+            parent_id = existing_parent.id
+        else:
+            new_parent = models.Parent(**student_data.parent.dict())
+            db.add(new_parent)
+            db.commit()
+            db.refresh(new_parent)
+            parent_id = new_parent.id
+    
+    if not parent_id:
+        raise HTTPException(status_code=400, detail="Parent information is required")
+
+    student_dict = student_data.dict(exclude={'parent', 'total_fees'})
+    student_dict['parent_id'] = parent_id
+    
+    db_student = models.Student(**student_dict)
+    db.add(db_student)
+    db.commit()
+    db.refresh(db_student)
+    
+    # Initialize fee summary with custom total
+    fee_summary = models.FeeSummary(
+        student_id=db_student.id, 
+        total_amount=student_data.total_fees, 
+        paid_amount=0, 
+        pending_balance=student_data.total_fees
+    )
+    db.add(fee_summary)
+    db.commit()
+    
+    return db_student
+
+@app.get("/api/students")
+def get_students(class_id: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "TEACHER", "ACCOUNTANT"])
+    query = db.query(models.Student)
+    if class_id:
+        query = query.filter(models.Student.class_id == class_id)
+    
+    students = query.all()
+    result = []
+    from datetime import date
+    today = date.today()
+
+    for s in students:
+        # Calculate Nudge Level
+        nudge_level = "NONE"
+        days_overdue = 0
+        if s.fees and s.fees.pending_balance > 0 and s.fees.next_due_date:
+            days_overdue = (today - s.fees.next_due_date).days
+            if days_overdue > 15: nudge_level = "STRICT"
+            elif days_overdue > 7: nudge_level = "FIRM"
+            elif days_overdue >= -3: nudge_level = "FRIENDLY" # Up to 3 days before due
+
+        result.append({
+            "id": s.id,
+            "name": s.name,
+            "roll_no": s.roll_no,
+            "class_name": f"{s.student_class.name} - {s.student_class.section}",
+            "parent_name": f"{s.parent.father_name or s.parent.mother_name}",
+            "parent_phone": s.parent.primary_phone,
+            "pending_balance": float(s.fees.pending_balance) if s.fees else 0,
+            "due_date": s.fees.next_due_date.isoformat() if s.fees and s.fees.next_due_date else None,
+            "nudge_level": nudge_level,
+            "days_overdue": days_overdue,
+            "status": s.status
+        })
+    return result
+
+# --- Attendance ---
+@app.get("/api/attendance/check")
+def check_attendance(class_id: str, date: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "TEACHER", "OFFICE"])
+    
+    # Get all student IDs in this class
+    student_ids = db.query(models.Student.id).filter(models.Student.class_id == class_id).all()
+    student_ids = [s[0] for s in student_ids]
+    
+    # Fetch existing attendance records for these students on the specific date
+    records = db.query(models.Attendance).filter(
+        models.Attendance.student_id.in_(student_ids),
+        models.Attendance.date == date
+    ).all()
+    
+    return [{"student_id": r.student_id, "status": r.status} for r in records]
+
+@app.post("/api/attendance/bulk")
+def mark_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "TEACHER", "OFFICE"])
+    for entry in data.entries:
+        attendance = models.Attendance(
+            student_id=entry['student_id'],
+            date=data.date,
+            status=entry['status']
+        )
+        db.merge(attendance) # merge handles update if exists due to unique constraint
+    db.commit()
+    return {"status": "success", "count": len(data.entries)}
+
+# --- Dashboard ---
+@app.get("/api/dashboard")
+def get_dashboard_stats(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "TEACHER", "ACCOUNTANT"])
+    total_students = db.query(models.Student).count()
+    # Simplified today's attendance
+    from datetime import date
+    today = date.today()
+    present_count = db.query(models.Attendance).filter(models.Attendance.date == today, models.Attendance.status == 'P').count()
+    total_marked = db.query(models.Attendance).filter(models.Attendance.date == today).count()
+    attendance_pct = (present_count / total_marked * 100) if total_marked > 0 else 0
+    
+    import sqlalchemy
+    total_pending = db.query(sqlalchemy.func.sum(models.FeeSummary.pending_balance)).scalar() or 0
+    
+    return {
+        "total_students": total_students,
+        "attendance_percentage": round(attendance_pct, 1),
+        "total_pending_fees": float(total_pending)
+    }
+
+@app.post("/api/fees/pay")
+def pay_fee(payment: schemas.PaymentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    db_payment = models.PaymentHistory(
+        student_id=payment.student_id,
+        amount=payment.amount,
+        payment_mode=payment.payment_mode,
+        receipt_no=payment.receipt_no
+    )
+    db.add(db_payment)
+    
+    # Update summary
+    fee_summary = db.query(models.FeeSummary).filter(models.FeeSummary.student_id == payment.student_id).first()
+    if fee_summary:
+        fee_summary.paid_amount += payment.amount
+        fee_summary.pending_balance -= payment.amount
+    
+    # Auto-post to General Ledger
+    student = db.query(models.Student).filter(models.Student.id == payment.student_id).first()
+    ledger_entry = models.GeneralLedger(
+        transaction_type='INCOME',
+        category='FEE',
+        amount=payment.amount,
+        description=f"Fee payment from {student.name}",
+        reference_id=db_payment.id
+    )
+    db.add(ledger_entry)
+    
+    db.commit()
+    return {"status": "success"}
+
+# --- Staff Management ---
+@app.post("/api/staff", response_model=schemas.Staff)
+def create_staff(staff: schemas.StaffCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    db_staff = models.Staff(**staff.dict())
+    db.add(db_staff)
+    db.commit()
+    db.refresh(db_staff)
+    return db_staff
+
+@app.get("/api/staff", response_model=List[schemas.Staff])
+def get_staff(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    return db.query(models.Staff).all()
+
+@app.post("/api/staff/attendance/bulk")
+def mark_staff_attendance(data: schemas.StaffAttendanceCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    for entry in data.entries:
+        attendance = models.StaffAttendance(
+            staff_id=entry['staff_id'],
+            date=data.date,
+            status=entry['status']
+        )
+        db.merge(attendance)
+    db.commit()
+    return {"status": "success", "count": len(data.entries)}
+
+@app.post("/api/staff/salary/pay")
+def pay_salary(payment: schemas.SalaryPaymentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT"])
+    db_payment = models.SalaryPayment(**payment.dict())
+    db.add(db_payment)
+    
+    # Auto-post to General Ledger
+    staff = db.query(models.Staff).filter(models.Staff.id == payment.staff_id).first()
+    ledger_entry = models.GeneralLedger(
+        transaction_type='EXPENSE',
+        category='SALARY',
+        amount=payment.amount_paid,
+        description=f"Salary to {staff.name} ({payment.for_month})",
+        reference_id=db_payment.id
+    )
+    db.add(ledger_entry)
+    
+    db.commit()
+    return {"status": "success"}
+
+@app.get("/api/staff/salary/history/{staff_id}")
+def get_salary_history(staff_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT"])
+    return db.query(models.SalaryPayment).filter(models.SalaryPayment.staff_id == staff_id).all()
+
+# --- Accounting / Ledger ---
+@app.post("/api/ledger")
+def add_ledger_entry(entry: schemas.LedgerEntryCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT"])
+    db_entry = models.GeneralLedger(**entry.dict())
+    db.add(db_entry)
+    db.commit()
+    return {"status": "success"}
+
+@app.get("/api/ledger")
+def get_ledger(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT"])
+    return db.query(models.GeneralLedger).order_by(models.GeneralLedger.date.desc()).all()
+
+@app.get("/api/ledger/stats")
+def get_ledger_stats(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT"])
+    import sqlalchemy
+    total_income = db.query(sqlalchemy.func.sum(models.GeneralLedger.amount)).filter(models.GeneralLedger.transaction_type == 'INCOME').scalar() or 0
+    total_expense = db.query(sqlalchemy.func.sum(models.GeneralLedger.amount)).filter(models.GeneralLedger.transaction_type == 'EXPENSE').scalar() or 0
+    return {
+        "income": float(total_income),
+        "expense": float(total_expense),
+        "profit": float(total_income - total_expense)
+    }
+
+from fastapi import BackgroundTasks
+import services
+
+# --- Broadcast ---
+@app.post("/api/broadcast")
+def send_broadcast(broadcast: schemas.BroadcastCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    
+    db_broadcast = models.Broadcast(
+        target_class_id=broadcast.target_class_id,
+        message=broadcast.message,
+        status="PROCESSING"
+    )
+    db.add(db_broadcast)
+    db.commit()
+    db.refresh(db_broadcast)
+    
+    # Get phones
+    query = db.query(models.Student)
+    if broadcast.target_class_id:
+        query = query.filter(models.Student.class_id == broadcast.target_class_id)
+    students = query.all()
+    
+    phones = set()
+    for s in students:
+        if s.parent and s.parent.primary_phone:
+            phones.add(s.parent.primary_phone)
+            
+    background_tasks.add_task(services.broadcast_worker, list(phones), broadcast.message, ["SMS", "WHATSAPP"])
+    
+    db_broadcast.status = "SENT"
+    db.commit()
+    
+    return {"status": "success", "id": db_broadcast.id, "receivers_count": len(phones)}
+
+@app.get("/api/broadcast")
+def get_broadcasts(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    return db.query(models.Broadcast).order_by(models.Broadcast.timestamp.desc()).all()
+
+# --- TimeTable ---
+@app.post("/api/timetable", response_model=schemas.TimeTable)
+def create_timetable(tt: schemas.TimeTableCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    db_tt = models.TimeTable(**tt.dict())
+    db.add(db_tt)
+    db.commit()
+    db.refresh(db_tt)
+    return db_tt
+
+# --- Proxy Pilot ---
+@app.get("/api/proxy/available-teachers")
+def get_available_teachers(day: str, period: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    # 1. Get all teachers
+    all_teachers = db.query(models.Staff).filter(models.Staff.role == 'TEACHER').all()
+    
+    # 2. Find teachers who have a class in this period (from TimeTable)
+    busy_teacher_ids = db.query(models.TimeTable.teacher_id).filter(
+        models.TimeTable.day_of_week == day.upper(),
+        models.TimeTable.period_number == period
+    ).all()
+    busy_teacher_ids = [r[0] for r in busy_teacher_ids]
+    
+    # 3. Find teachers who are already assigned as proxy for this period today
+    from datetime import date
+    assigned_proxy_ids = db.query(models.ProxyAssignment.proxy_teacher_id).filter(
+        models.ProxyAssignment.date == date.today(),
+        models.ProxyAssignment.period_number == period
+    ).all()
+    assigned_proxy_ids = [r[0] for r in assigned_proxy_ids]
+    
+    available = []
+    for t in all_teachers:
+        if t.id not in busy_teacher_ids and t.id not in assigned_proxy_ids:
+            available.append({"id": t.id, "name": t.name})
+            
+    return available
+
+@app.post("/api/proxy/assign")
+def assign_proxy(assignment: schemas.ProxyAssignmentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    db_proxy = models.ProxyAssignment(**assignment.dict())
+    db.add(db_proxy)
+    db.commit()
+    return {"status": "success", "id": db_proxy.id}
+
+@app.get("/api/proxy/timetable/{teacher_id}")
+def get_teacher_timetable(teacher_id: str, day: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "TEACHER"])
+    return db.query(models.TimeTable).filter(
+        models.TimeTable.teacher_id == teacher_id,
+        models.TimeTable.day_of_week == day.upper()
+    ).all()
+
+# --- Live Bus Pulse ---
+@app.post("/api/transport/trip", response_model=schemas.BusTrip)
+def create_bus_trip(trip: schemas.BusTripCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    db_trip = models.BusTrip(**trip.dict())
+    db.add(db_trip)
+    db.commit()
+    db.refresh(db_trip)
+    return db_trip
+
+@app.get("/api/transport/trips", response_model=List[schemas.BusTrip])
+def get_bus_trips(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "TEACHER"])
+    return db.query(models.BusTrip).all()
+
+@app.post("/api/transport/trip/{bus_id}/status")
+def update_trip_status(bus_id: str, status: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    db_trip = db.query(models.BusTrip).filter(models.BusTrip.id == bus_id).first()
+    if not db_trip: raise HTTPException(status_code=404, detail="Bus not found")
+    
+    db_trip.status = status
+    db_trip.last_updated = datetime.utcnow()
+    db.commit()
+    
+    # Placeholder: If EN_ROUTE, trigger WhatsApp broadcast to parents with Tracking Link
+    return {"status": "success", "bus_id": bus_id, "new_status": status}
+
+@app.post("/api/transport/trip/{bus_id}/location")
+def update_location(bus_id: str, location: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    db_trip = db.query(models.BusTrip).filter(models.BusTrip.id == bus_id).first()
+    if not db_trip: raise HTTPException(status_code=404, detail="Bus not found")
+
+    db_trip.current_location = location
+    db_trip.last_updated = datetime.utcnow()
+    db.commit()
+    return {"status": "success"}
+
+# --- PTM Profile (Parent Confrontation Fix) ---
+@app.get("/api/students/profile/{student_id}")
+def get_student_ptm_profile(student_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "TEACHER", "ACCOUNTANT"])
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not student: raise HTTPException(status_code=404, detail="Student not found")
+
+    # 1. Attendance Stats
+    from datetime import date, timedelta
+    total_days = 30
+    start_date = date.today() - timedelta(days=total_days)
+    attendance_records = db.query(models.Attendance).filter(
+        models.Attendance.student_id == student_id,
+        models.Attendance.date >= start_date
+    ).all()
+
+    present_count = sum(1 for r in attendance_records if r.status == 'P')
+    attendance_pct = (present_count / len(attendance_records) * 100) if attendance_records else 100
+
+    # 2. Payment Discipline
+    history = db.query(models.PaymentHistory).filter(models.PaymentHistory.student_id == student_id).all()
+    total_paid = sum(p.amount for p in history)
+
+    return {
+        "student": {
+            "name": student.name,
+            "roll_no": student.roll_no,
+            "class": student.student_class.name,
+            "parent_name": student.parent.father_name or student.parent.mother_name,
+            "phone": student.parent.primary_phone
+        },
+        "metrics": {
+            "attendance_30d": round(attendance_pct, 1),
+            "total_paid": float(total_paid),
+            "balance": float(student.fees.pending_balance) if student.fees else 0,
+            "discipline_score": "High" if attendance_pct > 90 else "Medium"
+        },
+        "recent_activity": [
+            {"date": r.date.isoformat(), "type": "ATTENDANCE", "status": r.status} 
+            for r in sorted(attendance_records, key=lambda x: x.date, reverse=True)[:5]
+        ]
+    }
+
+from fastapi import UploadFile, File
+import shutil
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "TEACHER", "ACCOUNTANT"])
+    upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, file.filename)
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"status": "success", "filename": file.filename, "url": f"/api/uploads/{file.filename}"}
+
+@app.get("/api/uploads/{filename}")
+def get_uploaded_file(filename: str):
+    filepath = os.path.join(os.path.dirname(__file__), "uploads", filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(filepath)
+
+@app.get("/api/export/students/excel")
+def export_students_excel(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    students = db.query(models.Student).all()
+    data = []
+    for s in students:
+        data.append({
+            "ID": s.id,
+            "Name": s.name,
+            "Roll No": s.roll_no,
+            "Class": s.student_class.name if s.student_class else "",
+            "Status": s.status
+        })
+    filepath = services.ExportService.generate_excel(data, "students")
+    return FileResponse(filepath, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(filepath))
+
+@app.get("/api/export/students/pdf")
+def export_students_pdf(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    students = db.query(models.Student).all()
+    data = []
+    for s in students:
+        data.append({
+            "Name": s.name,
+            "Roll No": s.roll_no,
+            "Status": s.status
+        })
+    filepath = services.ExportService.generate_pdf(data, "Student List", "students")
+    return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+
+

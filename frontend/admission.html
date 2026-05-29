@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="auth_check.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocoonz OS - Admission War-Room</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
+        .step-pill.active { background-color: #6366f1; color: white; }
+        .premium-input {
+            background: #fff;
+            border: 2px solid #F1F5F9;
+            transition: all 0.3s ease;
+        }
+        .premium-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.1);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-32">
+    
+    <header class="p-6 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-xl z-30 border-b border-slate-100">
+        <div class="flex items-center space-x-4">
+            <button onclick="location.href='students.html'" class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 active:scale-90 transition-transform">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">Admission <span class="text-indigo-600">War-Room</span></h1>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">New Student Onboarding</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="p-6 max-w-2xl mx-auto">
+        
+        <!-- Progress Bar -->
+        <div class="flex justify-between items-center mb-10 px-4">
+            <div id="step-1-pill" class="step-pill active w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-lg transition-all">1</div>
+            <div class="flex-1 h-0.5 bg-slate-200 mx-2"></div>
+            <div id="step-2-pill" class="step-pill bg-white text-slate-300 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border border-slate-100 transition-all">2</div>
+            <div class="flex-1 h-0.5 bg-slate-200 mx-2"></div>
+            <div id="step-3-pill" class="step-pill bg-white text-slate-300 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border border-slate-100 transition-all">3</div>
+        </div>
+
+        <form id="admissionForm" class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
+            
+            <!-- Step 1: Student Identity -->
+            <div id="step-1-content" class="space-y-6">
+                <h2 class="text-2xl font-black text-slate-800 mb-2">Student Identity</h2>
+                <p class="text-slate-400 text-sm font-medium mb-8">Basic profile of the new recruit.</p>
+                
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Full Name</label>
+                    <input type="text" id="student_name" placeholder="E.g. Rahul Sharma" class="w-full premium-input rounded-2xl p-4 font-bold text-slate-700" required>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Grade / Class</label>
+                        <select id="class_id" class="w-full premium-input rounded-2xl p-4 font-bold text-slate-700" required>
+                            <option value="">-- Choose Class --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Roll Number</label>
+                        <input type="text" id="roll_no" placeholder="E.g. 2026-01" class="w-full premium-input rounded-2xl p-4 font-bold text-slate-700" required>
+                    </div>
+                </div>
+
+                <button type="button" onclick="nextStep(2)" class="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 active:scale-95 transition-all">Continue to Parent Info</button>
+            </div>
+
+            <!-- Step 2: Parent Intelligence -->
+            <div id="step-2-content" class="space-y-6 hidden">
+                <h2 class="text-2xl font-black text-slate-800 mb-2">Parent Intelligence</h2>
+                <p class="text-slate-400 text-sm font-medium mb-8">Who are we talking to?</p>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Father's Name</label>
+                        <input type="text" id="father_name" placeholder="Mr. Name" class="w-full premium-input rounded-2xl p-4 font-bold text-slate-700">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Mother's Name</label>
+                        <input type="text" id="mother_name" placeholder="Mrs. Name" class="w-full premium-input rounded-2xl p-4 font-bold text-slate-700">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Primary Phone (Unique ID)</label>
+                    <input type="tel" id="primary_phone" placeholder="+91 00000 00000" class="w-full premium-input rounded-2xl p-4 font-bold text-slate-700" required>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Residential Address</label>
+                    <textarea id="address" rows="3" placeholder="Full address..." class="w-full premium-input rounded-2xl p-4 font-bold text-slate-700"></textarea>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button type="button" onclick="nextStep(1)" class="flex-1 bg-slate-100 text-slate-500 py-5 rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all">Back</button>
+                    <button type="button" onclick="nextStep(3)" class="flex-[2] bg-indigo-600 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 active:scale-95 transition-all">Financial Setup</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Financials & Review -->
+            <div id="step-3-content" class="space-y-6 hidden">
+                <h2 class="text-2xl font-black text-slate-800 mb-2">Financial Setup</h2>
+                <p class="text-slate-400 text-sm font-medium mb-8">Finalize the ledger for this student.</p>
+                
+                <div class="bg-indigo-50 p-6 rounded-[2rem] border border-indigo-100 mb-8">
+                    <label class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-2 block">Agreed Annual Fee (₹)</label>
+                    <input type="number" id="total_fees" value="25000" class="w-full bg-transparent border-b-2 border-indigo-200 outline-none text-4xl font-black text-indigo-900 pb-2">
+                    <p class="text-[10px] text-indigo-400 mt-3 font-medium">This will set the student's initial pending balance.</p>
+                </div>
+
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verification Summary</p>
+                    <div class="flex justify-between text-sm"><span class="text-slate-500">Student:</span> <span id="summary-name" class="font-bold text-slate-800">--</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-slate-500">Class:</span> <span id="summary-class" class="font-bold text-slate-800">--</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-slate-500">Parent:</span> <span id="summary-parent" class="font-bold text-slate-800">--</span></div>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button type="button" onclick="nextStep(2)" class="flex-1 bg-slate-100 text-slate-500 py-5 rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all">Back</button>
+                    <button type="submit" class="flex-[2] bg-emerald-600 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-100 active:scale-95 transition-all">Authorize Admission</button>
+                </div>
+            </div>
+
+        </form>
+
+    </main>
+
+    <script>
+        let currentStep = 1;
+        let classes = [];
+
+        async function init() {
+            const res = await secureFetch(`${API_BASE}/api/classes`);
+            classes = await res.json();
+            const select = document.getElementById('class_id');
+            select.innerHTML += classes.map(c => `<option value="${c.id}">${c.name} - ${c.section}</option>`).join('');
+        }
+
+        function nextStep(n) {
+            // Summary Update
+            if (n === 3) {
+                document.getElementById('summary-name').innerText = document.getElementById('student_name').value;
+                const cSelect = document.getElementById('class_id');
+                document.getElementById('summary-class').innerText = cSelect.options[cSelect.selectedIndex].text;
+                document.getElementById('summary-parent').innerText = document.getElementById('father_name').value || document.getElementById('mother_name').value;
+            }
+
+            // UI Toggle
+            document.getElementById(`step-${currentStep}-content`).classList.add('hidden');
+            document.getElementById(`step-${currentStep}-pill`).classList.remove('active');
+            
+            currentStep = n;
+            
+            document.getElementById(`step-${currentStep}-content`).classList.remove('hidden');
+            document.getElementById(`step-${currentStep}-pill`).classList.add('active');
+        }
+
+        document.getElementById('admissionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                name: document.getElementById('student_name').value,
+                roll_no: document.getElementById('roll_no').value,
+                class_id: document.getElementById('class_id').value,
+                total_fees: parseFloat(document.getElementById('total_fees').value),
+                parent: {
+                    father_name: document.getElementById('father_name').value,
+                    mother_name: document.getElementById('mother_name').value,
+                    primary_phone: document.getElementById('primary_phone').value,
+                    address: document.getElementById('address').value
+                }
+            };
+
+            const res = await secureFetch(`${API_BASE}/api/students`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert("🎉 Admission Successful! Recruited into Cocoonz OS.");
+                location.href = '/frontend/students.html';
+            } else {
+                const err = await res.json();
+                alert("Error: " + (err.detail || "Admission failed"));
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>

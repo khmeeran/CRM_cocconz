@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="auth_check.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocoonz OS - Attendance Flash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .tap-scale { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tap-scale:active { transform: scale(0.92); }
+        .student-card.absent { 
+            background-color: #fef2f2; 
+            border-color: #fee2e2; 
+            box-shadow: inset 0 0 0 2px #ef4444;
+        }
+    </style>
+</head>
+<body class="bg-[#F3F4F6] min-h-screen text-gray-900 pb-32">
+    
+    <header class="p-6 flex items-center justify-between sticky top-0 bg-[#F3F4F6]/80 backdrop-blur-md z-30">
+        <div class="flex items-center space-x-4">
+            <button onclick="location.href='admin.html'" class="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 active:scale-90 transition-transform">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">Attendance <span class="text-indigo-600">Flash</span></h1>
+                <p id="class-label" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select a class to start</p>
+            </div>
+        </div>
+        <div class="relative">
+            <input type="date" id="attendance-date" onchange="onDateChange()" class="bg-white border-none rounded-xl px-4 py-2 text-sm font-bold shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+    </header>
+
+    <main class="px-6">
+        
+        <!-- Premium Class Selector -->
+        <div class="mb-8">
+            <div id="class-pills" class="flex space-x-3 overflow-x-auto pb-4 no-scrollbar">
+                <!-- Dynamic Class Pills -->
+            </div>
+        </div>
+
+        <div id="empty-state" class="text-center py-20">
+            <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                <i class="fas fa-users text-3xl"></i>
+            </div>
+            <p class="text-gray-400 font-medium">Pick a class and date to manage records</p>
+        </div>
+
+        <!-- Student List -->
+        <div id="student-grid" class="grid grid-cols-1 gap-3">
+            <!-- Dynamic Cards -->
+        </div>
+
+    </main>
+
+    <!-- Floating Action Panel -->
+    <div id="action-panel" class="fixed bottom-8 left-6 right-6 translate-y-32 transition-transform duration-500 z-50">
+        <div class="bg-white p-5 rounded-[2.5rem] shadow-2xl border border-gray-100 flex justify-between items-center">
+            <div>
+                <p id="absent-count" class="text-2xl font-black text-red-600">0</p>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Absentees Marked</p>
+            </div>
+            <button id="submit-btn" onclick="submitAttendance()" class="h-14 px-8 bg-indigo-600 text-white rounded-full font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-all">
+                Submit Record
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let students = [];
+        let absentees = new Set();
+        let selectedClassId = null;
+
+        // Set default date to today
+        document.getElementById('attendance-date').valueAsDate = new Date();
+
+        async function loadClasses() {
+            const res = await secureFetch(`${API_BASE}/api/classes`);
+            const classes = await res.json();
+            const container = document.getElementById('class-pills');
+            container.innerHTML = classes.map(c => `
+                <button onclick="selectClass('${c.id}', '${c.name}')" id="pill-${c.id}" class="flex-none px-6 py-3 bg-white rounded-2xl shadow-sm border border-transparent font-bold text-sm text-gray-500 hover:border-indigo-100 transition-all">
+                    ${c.name}
+                </button>
+            `).join('');
+        }
+
+        async function selectClass(id, name) {
+            if (selectedClassId) {
+                document.getElementById(`pill-${selectedClassId}`).classList.remove('bg-indigo-600', 'text-white', 'shadow-indigo-100');
+                document.getElementById(`pill-${selectedClassId}`).classList.add('bg-white', 'text-gray-500');
+            }
+            selectedClassId = id;
+            document.getElementById(`pill-${id}`).classList.remove('bg-white', 'text-gray-500');
+            document.getElementById(`pill-${id}`).classList.add('bg-indigo-600', 'text-white', 'shadow-indigo-100');
+            
+            document.getElementById('class-label').innerText = name + " Roll Call";
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('action-panel').classList.remove('translate-y-32');
+
+            await refreshData();
+        }
+
+        async function onDateChange() {
+            if (selectedClassId) {
+                await refreshData();
+            }
+        }
+
+        async function refreshData() {
+            const date = document.getElementById('attendance-date').value;
+            
+            // 1. Fetch Students
+            const studentRes = await secureFetch(`${API_BASE}/api/students?class_id=${selectedClassId}`);
+            students = await studentRes.json();
+            
+            // 2. Fetch existing attendance for this date (using student profile API for simplicity)
+            absentees.clear();
+            
+            // We'll use a new endpoint or check existing records
+            // For now, let's fetch attendance for the class on this date
+            const attRes = await secureFetch(`${API_BASE}/api/attendance/check?class_id=${selectedClassId}&date=${date}`);
+            const existing = await attRes.json();
+            
+            existing.forEach(entry => {
+                if (entry.status === 'A') absentees.add(entry.student_id);
+            });
+
+            document.getElementById('absent-count').innerText = absentees.size;
+            renderGrid();
+        }
+
+        function toggleAbsent(id) {
+            if (absentees.has(id)) {
+                absentees.delete(id);
+            } else {
+                absentees.add(id);
+            }
+            document.getElementById('absent-count').innerText = absentees.size;
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('student-grid');
+            grid.innerHTML = students.map(s => `
+                <div onclick="toggleAbsent('${s.id}')" class="tap-scale student-card bg-white p-5 rounded-[1.5rem] shadow-sm border border-gray-50 flex items-center justify-between group ${absentees.has(s.id) ? 'absent' : ''}">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center font-bold text-gray-400 group-[.absent]:bg-red-100 group-[.absent]:text-red-500 transition-colors">
+                            ${s.roll_no.slice(-2)}
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-800">${s.name}</p>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">${s.roll_no}</p>
+                        </div>
+                    </div>
+                    <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center ${absentees.has(s.id) ? 'bg-red-500 border-red-500' : 'border-gray-100'} transition-all">
+                        ${absentees.has(s.id) ? '<i class="fas fa-times text-[10px] text-white"></i>' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function submitAttendance() {
+            const date = document.getElementById('attendance-date').value;
+            const entries = students.map(s => ({
+                student_id: s.id,
+                status: absentees.has(s.id) ? 'A' : 'P'
+            }));
+
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = "Syncing...";
+            btn.disabled = true;
+
+            const res = await secureFetch(`${API_BASE}/api/attendance/bulk`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date, entries })
+            });
+            
+            if (res.ok) {
+                alert(`Attendance for ${date} updated successfully.`);
+                btn.innerText = "Submit Record";
+                btn.disabled = false;
+            }
+        }
+
+        loadClasses();
+    </script>
+</body>
+</html>

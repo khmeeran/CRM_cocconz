@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocoonz OS - Intelligence Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0F172A; }
+        .mesh-bg {
+            background-color: #0F172A;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+        }
+        .premium-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .premium-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #6366f1;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+        }
+    </style>
+</head>
+<body class="mesh-bg min-h-screen flex items-center justify-center p-6">
+    
+    <div class="w-full max-w-md">
+        <!-- Brand -->
+        <div class="text-center mb-10">
+            <div class="w-16 h-16 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-indigo-500/20 rotate-3">
+                <i class="fas fa-lobster text-white text-2xl"></i>
+            </div>
+            <h1 class="text-3xl font-black text-white tracking-tight">COCOONZ <span class="text-indigo-400">OS</span></h1>
+            <p class="text-gray-400 text-sm font-medium mt-2">Next-Gen School Operating System</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl">
+            <h2 class="text-white text-xl font-bold mb-6">Authorized Personnel Only</h2>
+            
+            <form class="space-y-5" id="loginForm">
+                <div>
+                    <label class="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] block mb-2 ml-1">Username</label>
+                    <input type="text" id="username" placeholder="principal_admin" class="w-full premium-input rounded-2xl p-4 text-white placeholder-gray-600 outline-none" required>
+                </div>
+                
+                <div>
+                    <label class="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] block mb-2 ml-1">Secure Key</label>
+                    <input type="password" id="password" placeholder="••••••••" class="w-full premium-input rounded-2xl p-4 text-white placeholder-gray-600 outline-none" required>
+                </div>
+
+                <div id="errorMsg" class="text-red-400 text-xs hidden text-center">Invalid credentials. Access Denied.</div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-5 rounded-2xl shadow-xl shadow-indigo-500/20 transition-all active:scale-95">
+                        Enter Command Center
+                    </button>
+                </div>
+            </form>
+            
+            <script>
+                const API_BASE = "";
+                document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    const errorMsg = document.getElementById('errorMsg');
+
+                    const formData = new FormData();
+                    formData.append('username', username);
+                    formData.append('password', password);
+
+                    try {
+                        const response = await fetch(`${API_BASE}/token`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            localStorage.setItem('user_role', data.role);
+                            location.href = '/frontend/admin_v2.html';
+                        } else {
+                            errorMsg.classList.remove('hidden');
+                        }
+                    } catch (err) {
+                        console.error('Login failed', err);
+                        alert('Backend Connection Failed');
+                    }
+                });
+            </script>
+            
+            <div class="mt-8 text-center">
+                <p class="text-[10px] text-gray-600 font-bold uppercase tracking-widest">Hardware ID: KH-2026-X1</p>
+            </div>
+        </div>
+
+        <p class="text-center text-gray-500 text-xs mt-10">© 2026 Cocoonz Intelligence Systems. <br>Design for Scale.</p>
+    </div>
+
+</body>
+</html>

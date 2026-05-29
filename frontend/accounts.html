@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocoonz OS - Finance Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="auth_check.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
+        .income-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .expense-gradient { background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); }
+        .premium-shadow { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="min-h-screen text-slate-900 pb-32">
+    
+    <header class="p-6 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-xl z-30 border-b border-slate-100">
+        <div class="flex items-center space-x-4">
+            <button onclick="location.href='admin.html'" class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 active:scale-90 transition-transform">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">Finance <span class="text-indigo-600">Hub</span></h1>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master General Ledger</p>
+            </div>
+        </div>
+        <button onclick="openAddEntry()" class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+            <i class="fas fa-plus text-xs"></i>
+        </button>
+    </header>
+
+    <main class="p-6">
+        
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="income-gradient p-5 rounded-[2rem] text-white shadow-lg shadow-emerald-200/50">
+                <p class="text-[10px] font-bold uppercase opacity-80 mb-1">Total Income</p>
+                <h2 id="total-income" class="text-2xl font-black">₹ --</h2>
+            </div>
+            <div class="expense-gradient p-5 rounded-[2rem] text-white shadow-lg shadow-rose-200/50">
+                <p class="text-[10px] font-bold uppercase opacity-80 mb-1">Total Expense</p>
+                <h2 id="total-expense" class="text-2xl font-black">₹ --</h2>
+            </div>
+            <div class="col-span-2 bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex justify-between items-center">
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Net Profit/Loss</p>
+                    <h2 id="net-profit" class="text-3xl font-black">₹ --</h2>
+                </div>
+                <div class="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
+                    <i class="fas fa-chart-pie text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="quick-petty-cash" class="bg-indigo-900 p-6 rounded-[2rem] mb-8 text-white flex justify-between items-center">
+            <div>
+                <h3 class="font-black text-lg">Petty Cash Vault</h3>
+                <p class="text-xs text-indigo-300 font-medium">Record small expenses instantly.</p>
+            </div>
+            <button onclick="openPettyCash()" class="bg-white text-indigo-900 px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">Quick Spend</button>
+        </div>
+
+        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 pl-1">Recent Transactions</h3>
+        <div id="ledger-list" class="space-y-3">
+            <!-- Dynamic Ledger Rows -->
+        </div>
+
+    </main>
+
+    <!-- Add Entry Modal -->
+    <div id="entry-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-end">
+        <div class="bg-white w-full rounded-t-[3rem] p-8 shadow-2xl animate-slide-up">
+            <div class="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-8"></div>
+            <h2 id="modal-title" class="text-2xl font-black text-slate-800 mb-6">New Ledger Entry</h2>
+            
+            <div class="space-y-5">
+                <div id="type-selector" class="flex bg-slate-100 p-1.5 rounded-2xl">
+                    <button id="type-income" onclick="setEntryType('INCOME')" class="flex-1 py-3 rounded-xl text-sm font-bold bg-white shadow-sm transition-all">Income</button>
+                    <button id="type-expense" onclick="setEntryType('EXPENSE')" class="flex-1 py-3 rounded-xl text-sm font-bold text-slate-500 transition-all">Expense</button>
+                </div>
+                
+                <input type="text" id="entry-desc" placeholder="Description (e.g. EB Bill, Uniform Sale)" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-medium outline-none focus:border-indigo-500 transition-all">
+                <input type="number" id="entry-amount" placeholder="Amount (₹)" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-xl font-bold outline-none focus:border-indigo-500 transition-all">
+                
+                <div id="photo-proof-section" class="hidden">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Photo Proof (Mandatory)</label>
+                    <div class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center cursor-pointer hover:border-indigo-300 transition-all">
+                        <i class="fas fa-camera text-slate-300 text-2xl mb-2"></i>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Tap to Capture Bill</p>
+                    </div>
+                </div>
+
+                <button onclick="submitEntry()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-black text-lg shadow-xl shadow-indigo-100 active:scale-95 transition-all">
+                    Record Transaction
+                </button>
+                <button onclick="closeEntry()" class="w-full text-slate-400 font-bold py-2">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let entryType = 'INCOME';
+        let isPettyCash = false;
+
+        async function init() {
+            await loadStats();
+            await loadLedger();
+        }
+
+        async function loadStats() {
+            const res = await secureFetch(`${API_BASE}/api/ledger/stats`);
+            const data = await res.json();
+            document.getElementById('total-income').innerText = "₹" + data.income.toLocaleString();
+            document.getElementById('total-expense').innerText = "₹" + data.expense.toLocaleString();
+            document.getElementById('net-profit').innerText = "₹" + data.profit.toLocaleString();
+            document.getElementById('net-profit').className = data.profit >= 0 ? "text-3xl font-black text-emerald-600" : "text-3xl font-black text-rose-600";
+        }
+
+        async function loadLedger() {
+            const res = await secureFetch(`${API_BASE}/api/ledger`);
+            const ledger = await res.json();
+            const list = document.getElementById('ledger-list');
+            list.innerHTML = ledger.map(item => `
+                <div class="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-50 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center ${item.transaction_type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}">
+                            <i class="fas ${item.transaction_type === 'INCOME' ? 'fa-arrow-down' : 'fa-arrow-up'} text-[10px]"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">${item.description}</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${item.category} • ${item.date}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-black ${item.transaction_type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}">
+                            ${item.transaction_type === 'INCOME' ? '+' : '-'} ₹${parseFloat(item.amount).toLocaleString()}
+                        </p>
+                        ${item.bill_image_url ? '<i class="fas fa-image text-[10px] text-indigo-300 mt-1"></i>' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function setEntryType(t) {
+            entryType = t;
+            document.getElementById('type-income').className = t === 'INCOME' ? 'flex-1 py-3 rounded-xl text-sm font-bold bg-white shadow-sm transition-all' : 'flex-1 py-3 rounded-xl text-sm font-bold text-slate-500 transition-all';
+            document.getElementById('type-expense').className = t === 'EXPENSE' ? 'flex-1 py-3 rounded-xl text-sm font-bold bg-white shadow-sm transition-all' : 'flex-1 py-3 rounded-xl text-sm font-bold text-slate-500 transition-all';
+        }
+
+        function openAddEntry() {
+            isPettyCash = false;
+            document.getElementById('modal-title').innerText = "New Ledger Entry";
+            document.getElementById('type-selector').classList.remove('hidden');
+            document.getElementById('photo-proof-section').classList.add('hidden');
+            document.getElementById('entry-modal').classList.remove('hidden');
+        }
+
+        function openPettyCash() {
+            isPettyCash = true;
+            entryType = 'EXPENSE';
+            document.getElementById('modal-title').innerText = "Petty Cash Spend";
+            document.getElementById('type-selector').classList.add('hidden');
+            document.getElementById('photo-proof-section').classList.remove('hidden');
+            document.getElementById('entry-modal').classList.remove('hidden');
+        }
+
+        function closeEntry() { document.getElementById('entry-modal').classList.add('hidden'); }
+
+        async function submitEntry() {
+            const description = document.getElementById('entry-desc').value;
+            const amount = document.getElementById('entry-amount').value;
+            if(!description || !amount) return alert("Fill all fields");
+
+            const res = await secureFetch(`${API_BASE}/api/ledger`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    transaction_type: entryType,
+                    category: isPettyCash ? 'OTHER' : 'OTHER',
+                    amount: amount,
+                    description: description,
+                    bill_image_url: isPettyCash ? "mock_url_placeholder.jpg" : null
+                })
+            });
+            if(res.ok) { closeEntry(); init(); }
+        }
+
+        init();
+    </script>
+    <style>
+        @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</body>
+</html>
