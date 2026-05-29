@@ -14,10 +14,31 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import logging
+from pythonjsonlogger import jsonlogger
+import sentry_sdk
+from asgi_correlation_id import CorrelationIdMiddleware, correlation_id
 
-# Setup Logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+# Initialize Sentry
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=1.0,
+        environment=os.getenv("ENV", "development")
+    )
+
+# Setup JSON Logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logHandler = logging.StreamHandler()
+formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(name)s %(correlation_id)s %(message)s')
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
+# Disable default fast API logs if needed, but we just override the root logger.
 logger = logging.getLogger(__name__)
+
+# Import Celery App
+from celery_app import celery_app
 
 # Production DB Migrations (Alembic) should be used instead of create_all
 if os.getenv("ENV") != "production":
@@ -26,16 +47,37 @@ if os.getenv("ENV") != "production":
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="CRM Cocoonz API")
 app.state.limiter = limiter
+
+# Add Correlation ID Middleware
+app.add_middleware(CorrelationIdMiddleware)
+
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.exception(f"Unhandled exception during {request.method} {request.url.path}")
+    cid = correlation_id.get()
+    logger.exception(f"Unhandled exception during {request.method} {request.url.path}", extra={"correlation_id": cid})
     return Response(
         content='{"detail": "Internal Server Error"}',
         status_code=500,
         media_type="application/json"
     )
+
+# --- Health Probes ---
+@app.get("/api/health/liveness")
+def liveness_probe():
+    return {"status": "alive"}
+
+@app.get("/api/health/readiness")
+def readiness_probe(db: Session = Depends(get_db)):
+    from sqlalchemy import text
+    try:
+        # Check DB connection
+        db.execute(text("SELECT 1"))
+        return {"status": "ready"}
+    except Exception as e:
+        logger.error(f"Readiness probe failed: {e}", extra={"correlation_id": correlation_id.get()})
+        raise HTTPException(status_code=503, detail="Database not ready")
 
 # Auth Config
 SECRET_KEY = os.getenv("SECRET_KEY", "")
@@ -486,7 +528,7 @@ import services
 
 # --- Broadcast ---
 @app.post("/api/broadcast")
-def send_broadcast(broadcast: schemas.BroadcastCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def send_broadcast(broadcast: schemas.BroadcastCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     check_role(current_user, ["ADMIN", "OFFICE"])
     
     db_broadcast = models.Broadcast(
@@ -509,9 +551,10 @@ def send_broadcast(broadcast: schemas.BroadcastCreate, background_tasks: Backgro
         if s.parent and s.parent.primary_phone:
             phones.add(s.parent.primary_phone)
             
-    background_tasks.add_task(services.broadcast_worker, list(phones), broadcast.message, ["SMS", "WHATSAPP"])
+    # Dispatch durable task via Celery
+    celery_app.send_task("tasks.send_broadcast", args=[list(phones), broadcast.message, ["SMS", "WHATSAPP"]])
     
-    db_broadcast.status = "SENT"
+    db_broadcast.status = "QUEUED"
     db.commit()
     
     return {"status": "success", "id": db_broadcast.id, "receivers_count": len(phones)}
