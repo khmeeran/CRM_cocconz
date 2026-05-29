@@ -30,6 +30,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled exception during {request.method} {request.url.path}")
     return Response(
         content='{"detail": "Internal Server Error"}',
         status_code=500,
@@ -352,6 +353,15 @@ def get_dashboard_stats(db: Session = Depends(get_db), current_user: models.User
 @app.post("/api/fees/pay")
 def pay_fee(payment: schemas.PaymentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    
+    # Use pessimistic locking to prevent race conditions on balance updates
+    fee_summary = db.query(models.FeeSummary).filter(
+        models.FeeSummary.student_id == payment.student_id
+    ).with_for_update().first()
+    
+    if not fee_summary:
+        raise HTTPException(status_code=404, detail="Fee summary not found for student")
+
     db_payment = models.PaymentHistory(
         student_id=payment.student_id,
         amount=payment.amount,
@@ -360,11 +370,8 @@ def pay_fee(payment: schemas.PaymentCreate, db: Session = Depends(get_db), curre
     )
     db.add(db_payment)
     
-    # Update summary
-    fee_summary = db.query(models.FeeSummary).filter(models.FeeSummary.student_id == payment.student_id).first()
-    if fee_summary:
-        fee_summary.paid_amount += payment.amount
-        fee_summary.pending_balance -= payment.amount
+    fee_summary.paid_amount += payment.amount
+    fee_summary.pending_balance -= payment.amount
     
     # Auto-post to General Ledger
     student = db.query(models.Student).filter(models.Student.id == payment.student_id).first()
@@ -644,15 +651,30 @@ async def upload_file(file: UploadFile = File(...), current_user: models.User = 
     check_role(current_user, ["ADMIN", "OFFICE", "TEACHER", "ACCOUNTANT"])
     upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
     os.makedirs(upload_dir, exist_ok=True)
-    filepath = os.path.join(upload_dir, file.filename)
+    
+    # Sanitize filename
+    safe_filename = "".join(c for c in file.filename if c.isalnum() or c in "._-").strip()
+    if not safe_filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    filepath = os.path.join(upload_dir, safe_filename)
+    
+    # Final check to ensure path is within upload_dir
+    if not os.path.abspath(filepath).startswith(os.path.abspath(upload_dir)):
+        raise HTTPException(status_code=400, detail="Invalid upload path")
+
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    return {"status": "success", "filename": file.filename, "url": f"/api/uploads/{file.filename}"}
+    return {"status": "success", "filename": safe_filename, "url": f"/api/uploads/{safe_filename}"}
 
 @app.get("/api/uploads/{filename}")
 def get_uploaded_file(filename: str):
-    filepath = os.path.join(os.path.dirname(__file__), "uploads", filename)
-    if not os.path.exists(filepath):
+    # Sanitize filename for retrieval
+    safe_filename = "".join(c for c in filename if c.isalnum() or c in "._-").strip()
+    upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
+    filepath = os.path.join(upload_dir, safe_filename)
+    
+    if not os.path.exists(filepath) or not os.path.abspath(filepath).startswith(os.path.abspath(upload_dir)):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(filepath)
 

@@ -90,38 +90,14 @@ db.commit()
 db.close()
 
 def pay_fee():
-    db = SessionLocal()
-    # Direct function call simulation to replicate endpoint behavior with same session issue
-    payment = schemas.PaymentCreate(student_id="s1", amount=10, payment_mode="CASH")
+    # Simulate a web request by using the test client which handles its own sessions
+    payment_payload = {"student_id": "s1", "amount": 10, "payment_mode": "CASH"}
     try:
-        # Replicate code in /api/fees/pay
-        db_payment = models.PaymentHistory(
-            student_id=payment.student_id,
-            amount=payment.amount,
-            payment_mode=payment.payment_mode,
-            receipt_no=payment.receipt_no
-        )
-        db.add(db_payment)
-        
-        fee_summary = db.query(models.FeeSummary).filter(models.FeeSummary.student_id == payment.student_id).first()
-        if fee_summary:
-            # Sleep tiny bit to force race condition overlap
-            import time; time.sleep(0.01)
-            fee_summary.paid_amount += payment.amount
-            fee_summary.pending_balance -= payment.amount
-            
-        ledger_entry = models.GeneralLedger(
-            transaction_type='INCOME',
-            category='FEE',
-            amount=payment.amount,
-            description="Fee",
-        )
-        db.add(ledger_entry)
-        db.commit()
+        response = client.post("/api/fees/pay", json=payment_payload, headers=upload_headers)
+        if response.status_code != 200:
+            print(f"Request failed: {response.status_code}, {response.text}")
     except Exception as e:
         print(f"Error: {e}")
-    finally:
-        db.close()
 
 with ThreadPoolExecutor(max_workers=50) as executor:
     futures = [executor.submit(pay_fee) for _ in range(50)]
