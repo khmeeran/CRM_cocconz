@@ -189,9 +189,11 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current
     return db_user
 
 @app.get("/api/users", response_model=List[schemas.User])
-def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     check_role(current_user, ["ADMIN"])
-    return db.query(models.User).all()
+    if limit > 100:
+        limit = 100
+    return db.query(models.User).offset(skip).limit(limit).all()
 
 # --- Classes ---
 @app.post("/api/classes", response_model=schemas.Class)
@@ -263,13 +265,26 @@ def create_student(student_data: schemas.StudentCreate, db: Session = Depends(ge
     return db_student
 
 @app.get("/api/students")
-def get_students(class_id: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_students(class_id: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     check_role(current_user, ["ADMIN", "OFFICE", "TEACHER", "ACCOUNTANT"])
-    query = db.query(models.Student)
+    from sqlalchemy.orm import joinedload
+    
+    # Use joinedload to fetch fees and parent in a single query (or minimal joined queries)
+    # and prevent N+1 during serialization
+    query = db.query(models.Student).options(
+        joinedload(models.Student.fees),
+        joinedload(models.Student.parent),
+        joinedload(models.Student.student_class)
+    )
+    
     if class_id:
         query = query.filter(models.Student.class_id == class_id)
     
-    students = query.all()
+    # Enforce maximum limit for production safety
+    if limit > 500:
+        limit = 500
+        
+    students = query.offset(skip).limit(limit).all()
     result = []
     from datetime import date
     today = date.today()
@@ -282,15 +297,15 @@ def get_students(class_id: str = None, db: Session = Depends(get_db), current_us
             days_overdue = (today - s.fees.next_due_date).days
             if days_overdue > 15: nudge_level = "STRICT"
             elif days_overdue > 7: nudge_level = "FIRM"
-            elif days_overdue >= -3: nudge_level = "FRIENDLY" # Up to 3 days before due
+            elif days_overdue >= -3: nudge_level = "FRIENDLY" 
 
         result.append({
             "id": s.id,
             "name": s.name,
             "roll_no": s.roll_no,
-            "class_name": f"{s.student_class.name} - {s.student_class.section}",
-            "parent_name": f"{s.parent.father_name or s.parent.mother_name}",
-            "parent_phone": s.parent.primary_phone,
+            "class_name": f"{s.student_class.name} - {s.student_class.section}" if s.student_class else "N/A",
+            "parent_name": f"{s.parent.father_name or s.parent.mother_name}" if s.parent else "N/A",
+            "parent_phone": s.parent.primary_phone if s.parent else "N/A",
             "pending_balance": float(s.fees.pending_balance) if s.fees else 0,
             "due_date": s.fees.next_due_date.isoformat() if s.fees and s.fees.next_due_date else None,
             "nudge_level": nudge_level,
