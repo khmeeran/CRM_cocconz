@@ -1,4 +1,6 @@
-const API_BASE = "";
+// Use localStorage to persist the backend URL if testing on your PC
+// Teachers can set this once in the console: localStorage.setItem('api_base', 'https://your-tunnel.trycloudflare.com')
+const API_BASE = localStorage.getItem('api_base') || ""; 
 
 // RBAC Configuration
 const PAGE_ACCESS = {

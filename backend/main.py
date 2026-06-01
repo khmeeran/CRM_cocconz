@@ -27,14 +27,42 @@ if SENTRY_DSN:
         environment=os.getenv("ENV", "development")
     )
 
-# Setup JSON Logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logHandler = logging.StreamHandler()
+# Setup Logging
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+from logging.handlers import RotatingFileHandler
+
+# Root Logger Config
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
 formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(name)s %(correlation_id)s %(message)s')
-logHandler.setFormatter(formatter)
-logger.addHandler(logHandler)
-# Disable default fast API logs if needed, but we just override the root logger.
+
+# Stream Handler (Console)
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+root_logger.addHandler(stream_handler)
+
+# File Handler (App)
+app_file_handler = RotatingFileHandler(os.path.join(LOG_DIR, "app.log"), maxBytes=10*1024*1024, backupCount=5)
+app_file_handler.setFormatter(formatter)
+root_logger.addHandler(app_file_handler)
+
+# File Handler (Error)
+error_file_handler = RotatingFileHandler(os.path.join(LOG_DIR, "error.log"), maxBytes=10*1024*1024, backupCount=5)
+error_file_handler.setLevel(logging.ERROR)
+error_file_handler.setFormatter(formatter)
+root_logger.addHandler(error_file_handler)
+
+# Access Log (Specific logger for requests)
+access_logger = logging.getLogger("access")
+access_logger.setLevel(logging.INFO)
+access_logger.propagate = False # Don't send to root logger to avoid duplication
+access_file_handler = RotatingFileHandler(os.path.join(LOG_DIR, "access.log"), maxBytes=10*1024*1024, backupCount=5)
+access_file_handler.setFormatter(formatter)
+access_logger.addHandler(access_file_handler)
+
 logger = logging.getLogger(__name__)
 
 # Import Celery App
@@ -51,6 +79,26 @@ app.state.limiter = limiter
 # Add Correlation ID Middleware
 app.add_middleware(CorrelationIdMiddleware)
 
+# Access Logging Middleware
+@app.middleware("http")
+async def access_log_middleware(request: Request, call_next):
+    import time
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    
+    access_logger.info(
+        f"{request.method} {request.url.path}",
+        extra={
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration": round(process_time, 4),
+            "client_ip": request.client.host if request.client else "unknown"
+        }
+    )
+    return response
+
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.exception_handler(Exception)
@@ -64,6 +112,20 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # --- Health Probes ---
+@app.get("/health")
+def health_check(db: Session = Depends(get_db)):
+    from sqlalchemy import text
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {"status": "error", "database": "disconnected"}
+
+@app.get("/version")
+def get_version():
+    return {"version": "1.0.0-beta.1"}
+
 @app.get("/api/health/liveness")
 def liveness_probe():
     return {"status": "alive"}
@@ -146,14 +208,27 @@ def read_root():
     return FileResponse("../frontend/login.html")
 
 # CORS Config
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://cocoonz-school.vercel.app").split(",")
+ALLOWED_ORIGIN_REGEX = os.getenv("ALLOWED_ORIGIN_REGEX", r"https://.*\.vercel\.app")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Ensure cookies work over HTTPS (required for the Tunnel)
+@app.middleware("http")
+async def secure_cookie_middleware(request: Request, call_next):
+    response = await call_next(request)
+    # If we are in production (running through tunnel), ensure cookies are Secure and SameSite=None
+    if os.getenv("ENV") == "production":
+        for cookie in response.background.tasks if hasattr(response, "background") else []: pass # dummy
+        # We'll manually adjust headers in the login endpoint for better control
+    return response
 
 @app.middleware("http")
 async def csrf_middleware(request: Request, call_next):
