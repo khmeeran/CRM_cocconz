@@ -5,13 +5,13 @@ echo    COCOONZ SCHOOL CRM - BETA LAUNCH
 echo ==========================================
 echo.
 
-:: 1. Start Cloudflare Tunnel (Zero-Cost Quick Tunnel)
-echo [1/3] Launching Cloudflare Quick Tunnel...
+:: 1. Start Cloudflare Tunnel (Named Tunnel)
+echo [1/3] Launching Cloudflare Tunnel (cocoonz-api)...
 echo.
-echo NOTE: Copy the "trycloudflare.com" URL from the window below 
-echo and paste it into Vercel's NEXT_PUBLIC_API_URL.
+echo NOTE: Ensure your Vercel NEXT_PUBLIC_API_URL is set to:
+echo https://cocoonz-api.makemybook.net
 echo.
-start "Cloudflare Tunnel" /D "E:\CRM_Cocoonz" cloudflared tunnel --url http://localhost:8000
+start "Cloudflare Tunnel" /D "E:\CRM_Cocoonz" cloudflared tunnel run cocoonz-api
 
 :: 2. Start FastAPI Backend
 echo [2/3] Launching FastAPI Backend (Port 8000)...
@@ -28,7 +28,7 @@ echo    SYSTEMS DEPLOYED SUCCESSFULLY
 echo ==========================================
 echo.
 echo Backend:   http://localhost:8000
-echo Tunnel:    See the separate Cloudflare window for URL
+echo Tunnel:    https://cocoonz-api.makemybook.net
 echo Frontend:  Check your Vercel deployment URL
 echo.
 echo Keep this window open to monitor status.
