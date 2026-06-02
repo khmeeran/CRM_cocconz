@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_BASE } from '../lib/api';
+import { API_BASE } from '../../lib/api';
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState<any>(null);

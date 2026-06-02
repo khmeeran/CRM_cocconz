@@ -60,7 +60,7 @@ export default function LoginPage() {
                     }}>
                         <span style={{ fontSize: '1.5rem', color: 'white' }}>L</span>
                     </div>
-                    <h1 style={{ fontSize: '1.875rem', fontWeight: 900, tracking: '-0.025em' }}>
+                    <h1 style={{ fontSize: '1.875rem', fontWeight: 900, letterSpacing: '-0.025em' }}>
                         COCOONZ <span style={{ color: 'var(--indigo-400)' }}>OS</span>
                     </h1>
                     <p style={{ color: 'var(--gray-400)', fontSize: '0.875rem', fontWeight: 500, marginTop: '0.5rem' }}>

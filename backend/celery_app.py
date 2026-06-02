@@ -1,7 +1,10 @@
 import os
 from celery import Celery
+from dotenv import load_dotenv
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+load_dotenv()
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0?protocol=2")
 
 celery_app = Celery(
     "crm_cocoonz",

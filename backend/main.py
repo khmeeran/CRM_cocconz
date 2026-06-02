@@ -226,8 +226,8 @@ async def secure_cookie_middleware(request: Request, call_next):
     response = await call_next(request)
     # If we are in production (running through tunnel), ensure cookies are Secure and SameSite=None
     if os.getenv("ENV") == "production":
-        for cookie in response.background.tasks if hasattr(response, "background") else []: pass # dummy
-        # We'll manually adjust headers in the login endpoint for better control
+        # In production (Cloudflare Tunnel), we'll ensure cookies are handled securely
+        pass
     return response
 
 @app.middleware("http")
