@@ -1,5 +1,0 @@
-{"asctime": "2026-06-02 07:23:04,428", "levelname": "INFO", "name": "access", "correlation_id": null, "message": "GET /health", "method": "GET", "path": "/health", "status_code": 200, "duration": 0.5258, "client_ip": "127.0.0.1"}
-{"asctime": "2026-06-02 07:23:31,772", "levelname": "INFO", "name": "access", "correlation_id": null, "message": "GET /health", "method": "GET", "path": "/health", "status_code": 200, "duration": 0.0528, "client_ip": "127.0.0.1"}
-{"asctime": "2026-06-02 07:23:42,668", "levelname": "INFO", "name": "access", "correlation_id": null, "message": "GET /health", "method": "GET", "path": "/health", "status_code": 200, "duration": 0.0528, "client_ip": "127.0.0.1"}
-{"asctime": "2026-06-02 07:24:27,051", "levelname": "INFO", "name": "access", "correlation_id": null, "message": "GET /health", "method": "GET", "path": "/health", "status_code": 200, "duration": 0.4807, "client_ip": "127.0.0.1"}
-{"asctime": "2026-06-02 07:52:07,586", "levelname": "INFO", "name": "access", "correlation_id": null, "message": "GET /health", "method": "GET", "path": "/health", "status_code": 200, "duration": 0.0546, "client_ip": "127.0.0.1"}

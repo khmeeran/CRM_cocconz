@@ -19,5 +19,9 @@ db/*.db-wal
 .DS_Store
 Thumbs.db
 
-# VS Code
-.vscode/
+# Logs
+*.log
+logs/
+backend/logs/*.log
+!backend/logs/.gitkeep
+
