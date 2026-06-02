@@ -465,15 +465,57 @@ def check_attendance(class_id: str, date: str, db: Session = Depends(get_db), cu
 @app.post("/api/attendance/bulk")
 def mark_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     check_role(current_user, ["ADMIN", "TEACHER", "OFFICE"])
+    from uuid import UUID
     for entry in data.entries:
-        attendance = models.Attendance(
-            student_id=entry['student_id'],
-            date=data.date,
-            status=entry['status']
-        )
-        db.merge(attendance) # merge handles update if exists due to unique constraint
+        try:
+            s_id = UUID(entry['student_id']) if isinstance(entry['student_id'], str) else entry['student_id']
+            # Check for existing record
+            existing = db.query(models.Attendance).filter(
+                models.Attendance.student_id == s_id,
+                models.Attendance.date == data.date
+            ).first()
+            
+            if existing:
+                existing.status = entry['status']
+            else:
+                attendance = models.Attendance(
+                    student_id=s_id,
+                    date=data.date,
+                    status=entry['status']
+                )
+                db.add(attendance)
+        except Exception as e:
+            logger.error(f"Error processing attendance entry: {e}")
+            continue
+            
     db.commit()
     return {"status": "success", "count": len(data.entries)}
+
+# --- Student Modification ---
+@app.put("/api/students/{student_id}", response_model=schemas.Student)
+def update_student(student_id: str, student_data: schemas.StudentBase, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not db_student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    for key, value in student_data.dict(exclude_unset=True).items():
+        setattr(db_student, key, value)
+    
+    db.commit()
+    db.refresh(db_student)
+    return db_student
+
+@app.delete("/api/students/{student_id}")
+def delete_student(student_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"]) # Restricted to ADMIN only for safety
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not db_student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    db.delete(db_student)
+    db.commit()
+    return {"status": "success", "message": "Student deleted"}
 
 # --- Dashboard ---
 @app.get("/api/dashboard")
