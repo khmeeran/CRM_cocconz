@@ -201,11 +201,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 # Serve Frontend
-app.mount("/frontend", StaticFiles(directory="../frontend"), name="frontend")
+app.mount("/frontend", StaticFiles(directory="../frontend-legacy"), name="frontend")
 
 @app.get("/")
 def read_root():
-    return FileResponse("../frontend/login.html")
+    return FileResponse("../frontend-legacy/login.html")
 
 # CORS Config
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://cocoonz-school.vercel.app").split(",")
@@ -283,7 +283,8 @@ async def login_for_access_token(request: Request, response: Response, form_data
         httponly=True,
         secure=False, # Set to True in actual prod with HTTPS
         samesite="lax",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
     )
     
     # Set double-submit CSRF token
@@ -293,7 +294,8 @@ async def login_for_access_token(request: Request, response: Response, form_data
         value=csrf_token,
         httponly=False,
         secure=False,
-        samesite="lax"
+        samesite="lax",
+        path="/"
     )
     
     return {"access_token": access_token, "token_type": "bearer", "role": user.role}
