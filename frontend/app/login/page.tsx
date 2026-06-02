@@ -29,6 +29,7 @@ export default function LoginPage() {
             if (response.ok) {
                 const data = await response.json();
                 localStorage.setItem('user_role', data.role);
+                localStorage.setItem('access_token', data.access_token);
                 router.push('/admin');
             } else {
                 setError(true);
