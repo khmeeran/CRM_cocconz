@@ -50,6 +50,15 @@ export default function AdminDashboard() {
 
     if (loading) return <div className="mesh-bg min-h-screen flex items-center justify-center">Loading Systems...</div>;
 
+    const modules = [
+        { name: 'Students', path: '/admin/students' },
+        { name: 'Attendance', path: '/admin/attendance' },
+        { name: 'Fees', path: '/admin/fees' },
+        { name: 'Staff', path: '/admin/staff' },
+        { name: 'Transport', path: '/admin/transport' },
+        { name: 'Exams', path: '/admin/exams' }
+    ];
+
     return (
         <div className="mesh-bg min-h-screen p-8">
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
@@ -80,11 +89,14 @@ export default function AdminDashboard() {
             <section style={{ marginTop: '4rem' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2rem' }}>Quick Access Modules</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                    {['Students', 'Attendance', 'Fees', 'Staff', 'Transport', 'Exams'].map(module => (
-                        <div key={module} className="premium-card" style={{ padding: '1.5rem', textAlign: 'center', cursor: 'pointer', transition: 'transform 0.2s' }} 
+                    {modules.map(module => (
+                        <div key={module.name} 
+                             onClick={() => router.push(module.path)}
+                             className="premium-card" 
+                             style={{ padding: '1.5rem', textAlign: 'center', cursor: 'pointer', transition: 'transform 0.2s' }} 
                              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-5px)'}
                              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-                            <p style={{ fontWeight: 700 }}>{module}</p>
+                            <p style={{ fontWeight: 700 }}>{module.name}</p>
                         </div>
                     ))}
                 </div>
