@@ -226,8 +226,20 @@ async def secure_cookie_middleware(request: Request, call_next):
     response = await call_next(request)
     # If we are in production (running through tunnel), ensure cookies are Secure and SameSite=None
     if os.getenv("ENV") == "production":
-        # In production (Cloudflare Tunnel), we'll ensure cookies are handled securely
-        pass
+        # Check all set-cookie headers
+        for i, header in enumerate(response.raw_headers):
+            if header[0].lower() == b"set-cookie":
+                cookie_val = header[1].decode()
+                # Ensure Secure and SameSite=None for cross-site cookie usage
+                new_val = cookie_val
+                if "Secure" not in new_val:
+                    new_val += "; Secure"
+                if "SameSite" in new_val:
+                    import re
+                    new_val = re.sub(r"SameSite=\w+", "SameSite=None", new_val, flags=re.IGNORECASE)
+                else:
+                    new_val += "; SameSite=None"
+                response.raw_headers[i] = (b"set-cookie", new_val.encode())
     return response
 
 @app.middleware("http")
