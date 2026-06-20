@@ -188,6 +188,8 @@ def get_token(request: Request):
         auth = request.headers.get("Authorization")
         if auth and auth.startswith("Bearer "):
             token = auth.split(" ")[1]
+    if not token:
+        token = request.query_params.get("token")
     return token
 
 async def get_current_user(request: Request, db: Session = Depends(get_db)):
@@ -606,13 +608,17 @@ def pay_fee(payment: schemas.PaymentCreate, db: Session = Depends(get_db), curre
         raise HTTPException(status_code=404, detail="Fee summary not found for student")
 
     import uuid
+    from datetime import datetime
+    
     payment_id = str(uuid.uuid4())
+    generated_receipt_no = payment.receipt_no or f"REC-{datetime.now().strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())[:4].upper()}"
+    
     db_payment = models.PaymentHistory(
         id=payment_id,
         student_id=payment.student_id,
         amount=payment.amount,
         payment_mode=payment.payment_mode,
-        receipt_no=payment.receipt_no
+        receipt_no=generated_receipt_no
     )
     db.add(db_payment)
     
@@ -632,6 +638,48 @@ def pay_fee(payment: schemas.PaymentCreate, db: Session = Depends(get_db), curre
     
     db.commit()
     return {"status": "success"}
+
+@app.get("/api/ledger/receipt/{receipt_no}/pdf")
+def download_receipt_pdf(receipt_no: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT", "TEACHER"])
+    payment = db.query(models.PaymentHistory).filter(models.PaymentHistory.receipt_no == receipt_no).first()
+    if not payment: raise HTTPException(status_code=404, detail="Receipt not found")
+    
+    student = db.query(models.Student).filter(models.Student.id == payment.student_id).first()
+    
+    filepath = services.ExportService.generate_receipt_pdf(
+        receipt_no=payment.receipt_no,
+        student_name=student.name,
+        roll_no=student.roll_no,
+        amount=float(payment.amount),
+        date=payment.payment_date.strftime("%Y-%m-%d"),
+        payment_mode=payment.payment_mode
+    )
+    return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+
+@app.get("/api/students/{student_id}/ledger")
+def get_student_ledger(student_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    history = db.query(models.PaymentHistory).filter(models.PaymentHistory.student_id == student_id).order_by(models.PaymentHistory.payment_date.desc()).all()
+    return history
+
+@app.get("/api/reports/outstanding")
+def get_outstanding_fees_report(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    students = db.query(models.Student).all()
+    report = []
+    for s in students:
+        if s.fees and s.fees.pending_balance > 0:
+            report.append({
+                "student_id": s.id,
+                "name": s.name,
+                "roll_no": s.roll_no,
+                "class_name": s.student_class.name if s.student_class else "",
+                "parent_name": s.parent.father_name or s.parent.mother_name if s.parent else "",
+                "parent_phone": s.parent.primary_phone if s.parent else "",
+                "pending_balance": float(s.fees.pending_balance)
+            })
+    return sorted(report, key=lambda x: x['pending_balance'], reverse=True)
 
 # --- Staff Management ---
 @app.post("/api/staff", response_model=schemas.Staff)
