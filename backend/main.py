@@ -112,6 +112,20 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # --- Health Probes ---
+@app.get("/api/debug/version")
+def debug_version():
+    import subprocess
+    from datetime import datetime
+    try:
+        commit_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
+    except Exception:
+        commit_hash = "unknown"
+    return {
+        "commit_hash": commit_hash,
+        "timestamp": datetime.utcnow().isoformat(),
+        "message": "Debug version endpoint"
+    }
+
 @app.get("/health")
 def health_check(db: Session = Depends(get_db)):
     from sqlalchemy import text
