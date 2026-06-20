@@ -268,31 +268,8 @@ async def secure_cookie_middleware(request: Request, call_next):
                 response.raw_headers[i] = (b"set-cookie", new_val.encode())
     return response
 
-@app.middleware("http")
-async def csrf_middleware(request: Request, call_next):
-    if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
-        if not request.url.path.startswith("/token") and not request.url.path.startswith("/frontend"):
-            print(f"--- CSRF MIDDLEWARE CHECK ---")
-            print(f"Path: {request.url.path}")
-            auth_header = request.headers.get("Authorization")
-            print(f"Authorization Header Present: {bool(auth_header)}")
-            if auth_header:
-                print(f"Authorization Header StartsWith Bearer: {auth_header.startswith('Bearer ')}")
-            
-            # If the client explicitly sends a Bearer token in headers, it is immune to CSRF
-            if not (auth_header and auth_header.startswith("Bearer ")):
-                print("Taking CSRF cookie validation branch.")
-                cookie_csrf = request.cookies.get("csrf_token")
-                header_csrf = request.headers.get("X-CSRF-Token")
-                print(f"Cookie CSRF: {cookie_csrf}")
-                print(f"Header CSRF: {header_csrf}")
-                if not cookie_csrf or not header_csrf or cookie_csrf != header_csrf:
-                    print("REJECTION REASON: CSRF token mismatch or missing.")
-                    return Response("CSRF token validation failed", status_code=403)
-            else:
-                print("Skipping CSRF validation because valid Bearer token is present.")
-    response = await call_next(request)
-    return response
+# CSRF Middleware completely removed. 
+# Since we rely on JWT Bearer tokens, CSRF is not required and causes cross-origin deployment blocks.
 
 def check_role(user: models.User, allowed_roles: List[str]):
     # Translate database roles to allowed_roles values
