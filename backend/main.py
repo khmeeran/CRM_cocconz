@@ -214,12 +214,8 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-# Serve Frontend
-app.mount("/frontend", StaticFiles(directory="../frontend-legacy"), name="frontend")
-
-@app.get("/")
-def read_root():
-    return FileResponse("../frontend-legacy/login.html")
+# Serve Next.js Frontend Assets
+app.mount("/_next", StaticFiles(directory="../frontend/out/_next"), name="next_static")
 
 # CORS Config
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://cocoonz-school.vercel.app").split(",")
@@ -268,7 +264,15 @@ async def csrf_middleware(request: Request, call_next):
     return response
 
 def check_role(user: models.User, allowed_roles: List[str]):
-    if user.role not in allowed_roles:
+    # Translate database roles to allowed_roles values
+    role_map = {
+        "Super Admin": "ADMIN",
+        "Branch Admin": "OFFICE",
+        "Accountant": "ACCOUNTANT",
+        "Teacher": "TEACHER"
+    }
+    mapped_role = role_map.get(user.role, user.role)
+    if mapped_role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: Insufficient permissions"
@@ -953,5 +957,23 @@ def export_students_pdf(db: Session = Depends(get_db), current_user: models.User
         })
     filepath = services.ExportService.generate_pdf(data, "Student List", "students")
     return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+
+# Serve Next.js frontend pages and handle fallbacks
+@app.get("/{path:path}")
+def serve_frontend(path: str):
+    clean_path = path.strip("/")
+    
+    # Check if a directory with index.html exists
+    dir_index = os.path.join("../frontend/out", clean_path, "index.html")
+    if os.path.exists(dir_index):
+        return FileResponse(dir_index)
+        
+    # Check if a direct file exists
+    file_path = os.path.join("../frontend/out", clean_path)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return FileResponse(file_path)
+        
+    # Fallback to login index page
+    return FileResponse("../frontend/out/login/index.html")
 
 
