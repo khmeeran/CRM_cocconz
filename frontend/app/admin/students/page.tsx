@@ -8,19 +8,43 @@ interface Student {
   name: string;
   roll_no: string;
   class_name: string;
+  section: string;
   parent_name: string;
   parent_phone: string;
-  pending_balance: number;
+  address: string;
+  total_fees: number;
   status: string;
+}
+
+interface ApiClass {
+  id: string;
+  name: string;
+  section: string;
+  division: string;
 }
 
 export default function StudentManagement() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<ApiClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [showAdmissionForm, setShowAdmissionForm] = useState(false);
+
+  const [newStudent, setNewStudent] = useState<Partial<Student>>({
+    name: '',
+    roll_no: '',
+    class_name: '',
+    section: '',
+    parent_name: '',
+    parent_phone: '',
+    address: '',
+    total_fees: 25000,
+    status: 'ACTIVE'
+  });
 
   useEffect(() => {
     fetchStudents();
+    fetchClasses();
   }, []);
 
   const fetchStudents = async () => {
@@ -38,6 +62,18 @@ export default function StudentManagement() {
       console.error('Failed to fetch students', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/classes`);
+      if (res.ok) {
+        const data = await res.json();
+        setClasses(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch classes', err);
     }
   };
 
@@ -62,10 +98,81 @@ export default function StudentManagement() {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewStudent(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedClassId = e.target.value;
+    if (selectedClassId) {
+      const selectedClass = classes.find(c => c.id === selectedClassId);
+      if (selectedClass) {
+        setNewStudent(prev => ({
+          ...prev,
+          class_name: selectedClass.name,
+          section: selectedClass.section,
+          division: selectedClass.division
+        }));
+      }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newStudent.name || !newStudent.roll_no || !newStudent.class_name || !newStudent.parent_name || !newStudent.parent_phone) {
+      alert('Please fill all required fields');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/students`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify(newStudent)
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setStudents([...students, data]);
+        alert('🎉 Student admitted successfully!');
+        setShowAdmissionForm(false);
+        setNewStudent({
+          name: '',
+          roll_no: '',
+          class_name: '',
+          section: '',
+          parent_name: '',
+          parent_phone: '',
+          address: '',
+          total_fees: 25000,
+          status: 'ACTIVE'
+        });
+      } else {
+        const error = await res.json();
+        alert('Error: ' + (error.detail || 'Failed to admit student'));
+      }
+    } catch (err) {
+      alert('Error connecting to server.');
+    }
+  };
+
   const filteredStudents = students.filter(s => 
     s.name.toLowerCase().includes(search.toLowerCase()) || 
     s.roll_no.toLowerCase().includes(search.toLowerCase())
   );
+
+  const groupedClasses = classes.reduce((acc, classItem) => {
+    if (!acc[classItem.division]) {
+      acc[classItem.division] = [];
+    }
+    acc[classItem.division].push(classItem);
+    return acc;
+  }, {} as Record<string, ApiClass[]>);
 
   return (
     <div style={{ padding: '2rem', color: 'white', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
@@ -73,24 +180,165 @@ export default function StudentManagement() {
         <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Student Management</h1>
         <div style={{ display: 'flex', gap: '1rem' }}>
            <input 
-            type="text" 
-            placeholder="Search name or roll no..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ 
-              backgroundColor: '#1a1a1a', 
-              border: '1px solid #333', 
-              padding: '0.75rem 1rem', 
-              borderRadius: '8px',
-              color: 'white',
-              width: '300px'
-            }}
-           />
-           <button style={{ backgroundColor: '#fff', color: 'black', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 600 }}>
-             + Admit Student
-           </button>
+             type="text" 
+             placeholder="Search name or roll no..." 
+             value={search}
+             onChange={(e) => setSearch(e.target.value)}
+             style={{ 
+               backgroundColor: '#1a1a1a', 
+               border: '1px solid #333', 
+               padding: '0.75rem 1rem', 
+               borderRadius: '8px',
+               color: 'white',
+               width: '300px'
+             }}
+            />
+            <button 
+              onClick={() => setShowAdmissionForm(!showAdmissionForm)}
+              style={{ backgroundColor: '#fff', color: 'black', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 600 }}
+            >
+              {showAdmissionForm ? 'Cancel' : '+ Admit Student'}
+            </button>
         </div>
       </div>
+
+      {showAdmissionForm && (
+        <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #222', padding: '2rem', marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem' }}>New Student Admission</h2>
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: '0.875rem' }}>Full Name *</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={newStudent.name}
+                  onChange={handleInputChange}
+                  placeholder="E.g. Rahul Sharma"
+                  style={{ width: '100%', padding: '0.75rem', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '6px', color: 'white' }}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: '0.875rem' }}>Roll Number *</label>
+                <input
+                  type="text"
+                  name="roll_no"
+                  value={newStudent.roll_no}
+                  onChange={handleInputChange}
+                  placeholder="E.g. 2026-01"
+                  style={{ width: '100%', padding: '0.75rem', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '6px', color: 'white' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: '0.875rem' }}>Class *</label>
+                <select
+                  name="class_id"
+                  onChange={handleClassChange}
+                  style={{ width: '100%', padding: '0.75rem', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '6px', color: 'white' }}
+                  required
+                >
+                  <option value="">-- Select Class --</option>
+                  {Object.entries(groupedClasses).map(([division, classList]) => (
+                    <optgroup key={division} label={division}>
+                      {classList.map(classItem => (
+                        <option key={classItem.id} value={classItem.id}>
+                          {classItem.name} - {classItem.section}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: '0.875rem' }}>Parent Name *</label>
+                <input
+                  type="text"
+                  name="parent_name"
+                  value={newStudent.parent_name}
+                  onChange={handleInputChange}
+                  placeholder="Mr. Name / Mrs. Name"
+                  style={{ width: '100%', padding: '0.75rem', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '6px', color: 'white' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: '0.875rem' }}>Parent Phone *</label>
+                <input
+                  type="tel"
+                  name="parent_phone"
+                  value={newStudent.parent_phone}
+                  onChange={handleInputChange}
+                  placeholder="+91 00000 00000"
+                  style={{ width: '100%', padding: '0.75rem', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '6px', color: 'white' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: '0.875rem' }}>Annual Fee (₹)</label>
+                <input
+                  type="number"
+                  name="total_fees"
+                  value={newStudent.total_fees}
+                  onChange={handleInputChange}
+                  min="0"
+                  style={{ width: '100%', padding: '0.75rem', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '6px', color: 'white' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: '0.875rem' }}>Address</label>
+              <textarea
+                name="address"
+                value={newStudent.address}
+                onChange={handleInputChange}
+                placeholder="Full residential address..."
+                rows={3}
+                style={{ width: '100%', padding: '0.75rem', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '6px', color: 'white', resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                type="submit"
+                style={{
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  padding: '0.75rem 2rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Authorize Admission
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAdmissionForm(false)}
+                style={{
+                  backgroundColor: '#ef4444',
+                  color: 'white',
+                  padding: '0.75rem 2rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {loading ? (
         <p>Loading records...</p>
@@ -102,6 +350,7 @@ export default function StudentManagement() {
                 <th style={{ padding: '1rem' }}>Name</th>
                 <th style={{ padding: '1rem' }}>Roll No</th>
                 <th style={{ padding: '1rem' }}>Class</th>
+                <th style={{ padding: '1rem' }}>Section</th>
                 <th style={{ padding: '1rem' }}>Parent</th>
                 <th style={{ padding: '1rem' }}>Phone</th>
                 <th style={{ padding: '1rem' }}>Status</th>
@@ -114,6 +363,7 @@ export default function StudentManagement() {
                   <td style={{ padding: '1rem', fontWeight: 600 }}>{s.name}</td>
                   <td style={{ padding: '1rem', color: '#888' }}>{s.roll_no}</td>
                   <td style={{ padding: '1rem' }}>{s.class_name}</td>
+                  <td style={{ padding: '1rem', color: '#888' }}>{s.section}</td>
                   <td style={{ padding: '1rem' }}>{s.parent_name}</td>
                   <td style={{ padding: '1rem' }}>{s.parent_phone}</td>
                   <td style={{ padding: '1rem' }}>
