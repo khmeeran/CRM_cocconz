@@ -67,13 +67,19 @@ export default function StudentManagement() {
 
   const fetchClasses = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/classes`);
+      const res = await fetch(`${API_BASE}/api/classes`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setClasses(data);
       }
     } catch (err) {
       console.error('Failed to fetch classes', err);
+    } finally {
+      setLoading(false);
     }
   };
 
