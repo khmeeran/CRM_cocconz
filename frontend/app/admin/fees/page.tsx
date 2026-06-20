@@ -44,11 +44,13 @@ export default function FeesCollection() {
         setSubmitting(true);
         
         try {
+            const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || '';
             const res = await fetch(`${API_BASE}/api/fees/pay`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                    'X-CSRF-Token': csrfToken
                 },
                 credentials: 'include',
                 body: JSON.stringify({
