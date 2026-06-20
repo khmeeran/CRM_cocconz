@@ -83,58 +83,54 @@ class ExportService:
         return filepath
 
     @staticmethod
-    def generate_receipt_pdf(receipt_no: str, student_name: str, roll_no: str, amount: float, date: str, payment_mode: str) -> str:
+    def generate_receipt_pdf(receipt_no: str, student_name: str, roll_no: str, amount: float, date: str, payment_mode: str) -> bytearray:
         pdf = FPDF()
         pdf.add_page()
         
         # Header
-        pdf.set_font("Arial", 'B', 20)
-        pdf.cell(190, 10, txt="COCOONZ PRESCHOOL", ln=True, align='C')
-        pdf.set_font("Arial", '', 10)
-        pdf.cell(190, 6, txt="Official Fee Receipt", ln=True, align='C')
+        pdf.set_font("Helvetica", 'B', 20)
+        pdf.cell(190, 10, text="COCOONZ PRESCHOOL", ln=True, align='C')
+        pdf.set_font("Helvetica", '', 10)
+        pdf.cell(190, 6, text="Official Fee Receipt", ln=True, align='C')
         pdf.ln(10)
         
         # Details
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(50, 10, txt=f"Receipt No:", border=0)
-        pdf.set_font("Arial", '', 12)
-        pdf.cell(140, 10, txt=str(receipt_no), border=0, ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(50, 10, text=f"Receipt No:", border=0)
+        pdf.set_font("Helvetica", '', 12)
+        pdf.cell(140, 10, text=str(receipt_no), border=0, ln=True)
         
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(50, 10, txt=f"Date:", border=0)
-        pdf.set_font("Arial", '', 12)
-        pdf.cell(140, 10, txt=str(date), border=0, ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(50, 10, text=f"Date:", border=0)
+        pdf.set_font("Helvetica", '', 12)
+        pdf.cell(140, 10, text=str(date), border=0, ln=True)
         
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(50, 10, txt=f"Student Name:", border=0)
-        pdf.set_font("Arial", '', 12)
-        pdf.cell(140, 10, txt=str(student_name), border=0, ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(50, 10, text=f"Student Name:", border=0)
+        pdf.set_font("Helvetica", '', 12)
+        pdf.cell(140, 10, text=str(student_name), border=0, ln=True)
         
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(50, 10, txt=f"Admission No:", border=0)
-        pdf.set_font("Arial", '', 12)
-        pdf.cell(140, 10, txt=str(roll_no), border=0, ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(50, 10, text=f"Admission No:", border=0)
+        pdf.set_font("Helvetica", '', 12)
+        pdf.cell(140, 10, text=str(roll_no), border=0, ln=True)
         
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(50, 10, txt=f"Payment Mode:", border=0)
-        pdf.set_font("Arial", '', 12)
-        pdf.cell(140, 10, txt=str(payment_mode), border=0, ln=True)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(50, 10, text=f"Payment Mode:", border=0)
+        pdf.set_font("Helvetica", '', 12)
+        pdf.cell(140, 10, text=str(payment_mode), border=0, ln=True)
         
         pdf.ln(10)
         
         # Amount Box
-        pdf.set_font("Arial", 'B', 14)
-        pdf.cell(50, 15, txt="Amount Paid:", border=1)
-        pdf.set_font("Arial", 'B', 16)
-        pdf.cell(140, 15, txt=f"INR {amount}", border=1, ln=True)
+        pdf.set_font("Helvetica", 'B', 14)
+        pdf.cell(50, 15, text="Amount Paid:", border=1)
+        pdf.set_font("Helvetica", 'B', 16)
+        pdf.cell(140, 15, text=f"INR {amount}", border=1, ln=True)
         
         pdf.ln(20)
-        pdf.set_font("Arial", 'I', 10)
-        pdf.cell(190, 10, txt="This is a computer generated receipt.", ln=True, align='C')
+        pdf.set_font("Helvetica", 'I', 10)
+        pdf.cell(190, 10, text="This is a computer generated receipt.", ln=True, align='C')
         
-        export_dir = os.path.join(os.path.dirname(__file__), "exports")
-        os.makedirs(export_dir, exist_ok=True)
-        filepath = os.path.join(export_dir, f"Receipt_{receipt_no}.pdf")
-        pdf.output(filepath)
-        return filepath
+        return pdf.output()
 

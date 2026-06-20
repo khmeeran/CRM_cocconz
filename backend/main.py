@@ -647,7 +647,7 @@ def download_receipt_pdf(receipt_no: str, db: Session = Depends(get_db), current
     
     student = db.query(models.Student).filter(models.Student.id == payment.student_id).first()
     
-    filepath = services.ExportService.generate_receipt_pdf(
+    pdf_bytes = services.ExportService.generate_receipt_pdf(
         receipt_no=payment.receipt_no,
         student_name=student.name,
         roll_no=student.roll_no,
@@ -655,7 +655,8 @@ def download_receipt_pdf(receipt_no: str, db: Session = Depends(get_db), current
         date=payment.payment_date.strftime("%Y-%m-%d"),
         payment_mode=payment.payment_mode
     )
-    return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+    from fastapi.responses import Response
+    return Response(content=bytes(pdf_bytes), media_type='application/pdf')
 
 @app.get("/api/students/{student_id}/ledger")
 def get_student_ledger(student_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
