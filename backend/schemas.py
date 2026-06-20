@@ -18,6 +18,7 @@ class User(UserBase):
 class ClassBase(BaseModel):
     name: str
     section: str
+    division: Optional[str] = None
 
 class ClassCreate(ClassBase):
     pass

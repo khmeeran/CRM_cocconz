@@ -144,7 +144,23 @@
             const res = await secureFetch(`${API_BASE}/api/classes`);
             classes = await res.json();
             const select = document.getElementById('class_id');
-            select.innerHTML += classes.map(c => `<option value="${c.id}">${c.name} - ${c.section}</option>`).join('');
+            
+            const divisions = {};
+            classes.forEach(c => {
+                const divName = c.division || 'Unassigned';
+                if (!divisions[divName]) {
+                    divisions[divName] = [];
+                }
+                divisions[divName].push(c);
+            });
+            
+            let html = '<option value="" disabled selected>Select class</option>';
+            for (const [divName, classList] of Object.entries(divisions)) {
+                html += `<optgroup label="${divName}">`;
+                html += classList.map(c => `<option value="${c.id}">${c.name} - ${c.section}</option>`).join('');
+                html += `</optgroup>`;
+            }
+            select.innerHTML = html;
         }
 
         function nextStep(n) {

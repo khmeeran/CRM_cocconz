@@ -327,10 +327,47 @@ def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), cu
     return db.query(models.User).offset(skip).limit(limit).all()
 
 # --- Classes ---
+PRESCHOOL_CLASSES = {"Playgroup", "Readiness", "Pre KG", "Junior KG", "Senior KG"}
+PRIMARY_CLASSES = {"Class 1", "Class 2", "Class 3", "Class 4", "Class 5"}
+ALLOWED_CLASSES = PRESCHOOL_CLASSES.union(PRIMARY_CLASSES)
+
+def resolve_and_validate_class(class_name: str) -> str:
+    cleaned_name = class_name.strip()
+    class_master_mode = os.getenv("CLASS_MASTER_MODE", "CONFIGURABLE")
+    if class_master_mode == "FIXED":
+        if cleaned_name not in ALLOWED_CLASSES:
+            raise ValueError(f"Class name '{cleaned_name}' is not in the whitelist under FIXED mode. Valid classes: {sorted(list(ALLOWED_CLASSES))}")
+    return cleaned_name
+
 @app.post("/api/classes", response_model=schemas.Class)
 def create_class(class_data: schemas.ClassCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     check_role(current_user, ["ADMIN", "OFFICE"])
-    db_class = models.Class(name=class_data.name, section=class_data.section)
+    
+    class_name = class_data.name.strip()
+    division = class_data.division
+    
+    # Check CLASS_MASTER_MODE from environment
+    class_master_mode = os.getenv("CLASS_MASTER_MODE", "CONFIGURABLE")
+    if class_master_mode == "FIXED":
+        if class_name not in ALLOWED_CLASSES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Class name '{class_name}' is not in the whitelist under FIXED mode. Valid classes: {sorted(list(ALLOWED_CLASSES))}"
+            )
+        # Determine division automatically
+        if class_name in PRESCHOOL_CLASSES:
+            division = "Preschool"
+        elif class_name in PRIMARY_CLASSES:
+            division = "Primary"
+    else:
+        # For CONFIGURABLE mode, if division is not provided, try to guess or leave it
+        if not division:
+            if class_name in PRESCHOOL_CLASSES:
+                division = "Preschool"
+            elif class_name in PRIMARY_CLASSES:
+                division = "Primary"
+
+    db_class = models.Class(name=class_name, section=class_data.section.strip(), division=division)
     db.add(db_class)
     try:
         db.commit()
@@ -550,7 +587,10 @@ def pay_fee(payment: schemas.PaymentCreate, db: Session = Depends(get_db), curre
     if not fee_summary:
         raise HTTPException(status_code=404, detail="Fee summary not found for student")
 
+    import uuid
+    payment_id = str(uuid.uuid4())
     db_payment = models.PaymentHistory(
+        id=payment_id,
         student_id=payment.student_id,
         amount=payment.amount,
         payment_mode=payment.payment_mode,
@@ -568,7 +608,7 @@ def pay_fee(payment: schemas.PaymentCreate, db: Session = Depends(get_db), curre
         category='FEE',
         amount=payment.amount,
         description=f"Fee payment from {student.name}",
-        reference_id=db_payment.id
+        reference_id=payment_id
     )
     db.add(ledger_entry)
     
@@ -878,6 +918,7 @@ def export_students_excel(db: Session = Depends(get_db), current_user: models.Us
             "Name": s.name,
             "Roll No": s.roll_no,
             "Class": s.student_class.name if s.student_class else "",
+            "Division": s.student_class.division if (s.student_class and s.student_class.division) else "",
             "Status": s.status
         })
     filepath = services.ExportService.generate_excel(data, "students")
@@ -892,6 +933,8 @@ def export_students_pdf(db: Session = Depends(get_db), current_user: models.User
         data.append({
             "Name": s.name,
             "Roll No": s.roll_no,
+            "Class": s.student_class.name if s.student_class else "",
+            "Division": s.student_class.division if (s.student_class and s.student_class.division) else "",
             "Status": s.status
         })
     filepath = services.ExportService.generate_pdf(data, "Student List", "students")

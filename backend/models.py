@@ -19,6 +19,7 @@ class Class(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String)
     section = Column(String)
+    division = Column(String, nullable=True)
     __table_args__ = (UniqueConstraint('name', 'section', name='_class_section_uc'),)
     students = relationship("Student", back_populates="student_class")
 
