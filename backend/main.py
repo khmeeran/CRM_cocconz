@@ -258,10 +258,13 @@ async def secure_cookie_middleware(request: Request, call_next):
 async def csrf_middleware(request: Request, call_next):
     if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
         if not request.url.path.startswith("/token") and not request.url.path.startswith("/frontend"):
-            cookie_csrf = request.cookies.get("csrf_token")
-            header_csrf = request.headers.get("X-CSRF-Token")
-            if not cookie_csrf or not header_csrf or cookie_csrf != header_csrf:
-                return Response("CSRF token validation failed", status_code=403)
+            # If the client explicitly sends a Bearer token in headers, it is immune to CSRF
+            auth_header = request.headers.get("Authorization")
+            if not (auth_header and auth_header.startswith("Bearer ")):
+                cookie_csrf = request.cookies.get("csrf_token")
+                header_csrf = request.headers.get("X-CSRF-Token")
+                if not cookie_csrf or not header_csrf or cookie_csrf != header_csrf:
+                    return Response("CSRF token validation failed", status_code=403)
     response = await call_next(request)
     return response
 
