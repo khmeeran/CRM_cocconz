@@ -4,13 +4,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0?protocol=2")
+# Retrieve Redis URL securely without hardcoded fallback
+REDIS_URL = os.getenv("REDIS_URL")
 
-celery_app = Celery(
-    "crm_cocoonz",
-    broker=REDIS_URL,
-    backend=REDIS_URL
-)
+# Initialize Celery only if a valid Redis URL is provided
+if REDIS_URL:
+    celery_app = Celery("crm_cocoonz", broker=REDIS_URL, backend=REDIS_URL)
+else:
+    celery_app = None
 
 celery_app.conf.update(
     task_serializer="json",

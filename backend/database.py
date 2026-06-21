@@ -7,16 +7,16 @@ import redis
 load_dotenv()
 
 # PostgreSQL for Production
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/school_db")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(
     DATABASE_URL, 
     pool_size=10, 
     max_overflow=20 
-) if "postgresql" in DATABASE_URL else create_engine(
+) if DATABASE_URL and "postgresql" in DATABASE_URL else create_engine(
     DATABASE_URL, 
     connect_args={"check_same_thread": False}
-)
+) if DATABASE_URL else None
 
 if "sqlite" in DATABASE_URL:
     # Enable WAL mode for local dev/testing
@@ -37,6 +37,9 @@ def get_db():
         db.close()
 
 # Redis Configuration
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+REDIS_URL = os.getenv("REDIS_URL")
+if REDIS_URL:
+    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+else:
+    redis_client = None
 
