@@ -7,6 +7,16 @@ from datetime import datetime
 
 Base = declarative_base()
 
+class Branch(Base):
+    __tablename__ = "branches"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False)
+    code = Column(String, unique=True, index=True, nullable=False)
+    address = Column(String, nullable=True)
+    contact_email = Column(String, nullable=True)
+    contact_phone = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+
 class User(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))

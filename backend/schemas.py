@@ -15,6 +15,30 @@ class User(UserBase):
     class Config:
         from_attributes = True
 
+class BranchBase(BaseModel):
+    name: str
+    code: str
+    address: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    is_active: Optional[bool] = True
+
+class BranchCreate(BranchBase):
+    pass
+
+class BranchUpdate(BaseModel):
+    name: Optional[str] = None
+    code: Optional[str] = None
+    address: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class Branch(BranchBase):
+    id: str
+    class Config:
+        from_attributes = True
+
 class ClassBase(BaseModel):
     name: str
     section: str

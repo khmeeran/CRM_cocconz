@@ -354,6 +354,54 @@ def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), cu
         limit = 100
     return db.query(models.User).offset(skip).limit(limit).all()
 
+# --- Branches ---
+@app.post("/api/branches", response_model=schemas.Branch)
+def create_branch(branch: schemas.BranchCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    
+    if db.query(models.Branch).filter(models.Branch.code == branch.code).first():
+        raise HTTPException(status_code=400, detail="Branch code already exists")
+        
+    db_branch = models.Branch(**branch.dict())
+    db.add(db_branch)
+    db.commit()
+    db.refresh(db_branch)
+    return db_branch
+
+@app.get("/api/branches", response_model=List[schemas.Branch])
+def get_branches(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "TEACHER", "ACCOUNTANT"])
+    return db.query(models.Branch).offset(skip).limit(limit).all()
+
+@app.put("/api/branches/{branch_id}", response_model=schemas.Branch)
+def update_branch(branch_id: str, branch_data: schemas.BranchUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    db_branch = db.query(models.Branch).filter(models.Branch.id == branch_id).first()
+    if not db_branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+        
+    if branch_data.code and branch_data.code != db_branch.code:
+        if db.query(models.Branch).filter(models.Branch.code == branch_data.code).first():
+            raise HTTPException(status_code=400, detail="Branch code already exists")
+            
+    for key, value in branch_data.dict(exclude_unset=True).items():
+        setattr(db_branch, key, value)
+        
+    db.commit()
+    db.refresh(db_branch)
+    return db_branch
+
+@app.delete("/api/branches/{branch_id}")
+def delete_branch(branch_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    db_branch = db.query(models.Branch).filter(models.Branch.id == branch_id).first()
+    if not db_branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+        
+    db.delete(db_branch)
+    db.commit()
+    return {"status": "success", "message": "Branch deleted"}
+
 # --- Classes ---
 PRESCHOOL_CLASSES = {"Playgroup", "Readiness", "Pre KG", "Junior KG", "Senior KG"}
 PRIMARY_CLASSES = {"Class 1", "Class 2", "Class 3", "Class 4", "Class 5"}
