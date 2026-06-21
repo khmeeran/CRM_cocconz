@@ -666,7 +666,8 @@ def create_admission(enquiry: schemas.AdmissionCreate, db: Session = Depends(get
         class_id=enquiry.class_id,
         parent_id=parent.id,
         dob=enquiry.dob,
-        status=enquiry.status
+        status=enquiry.status,
+        payment_preference=enquiry.payment_preference
     )
     db.add(student)
     db.commit()
@@ -677,13 +678,44 @@ def create_admission(enquiry: schemas.AdmissionCreate, db: Session = Depends(get
 def update_admission(student_id: str, adm_data: schemas.AdmissionUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     check_role(current_user, ["ADMIN", "OFFICE"])
     db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
-    if not db_student:
-        raise HTTPException(status_code=404, detail="Student not found")
+    if not db_student: raise HTTPException(status_code=404, detail="Student not found")
         
     if adm_data.name: db_student.name = adm_data.name
     if adm_data.class_id: db_student.class_id = adm_data.class_id
-    if adm_data.status: db_student.status = adm_data.status
-    
+    if adm_data.payment_preference: db_student.payment_preference = adm_data.payment_preference
+    if adm_data.status: 
+        old_status = db_student.status
+        db_student.status = adm_data.status
+        if old_status != "ADMITTED" and adm_data.status == "ADMITTED":
+            # Generate Fee Assignments based on Payment Preference
+            import uuid
+            fee_structures = db.query(models.FeeStructure).filter(models.FeeStructure.class_id == db_student.class_id).all()
+            payment_pref = db_student.payment_preference or "Term Wise"
+            for fs in fee_structures:
+                head = db.query(models.FeeHead).filter(models.FeeHead.id == fs.fee_head_id).first()
+                if not head: continue
+                
+                # If Term Wise preference but Fee is Full Fee mapped (i.e. term=None), we assign it. 
+                # If Full Fee preference but Fee is Term Wise mapped, we assign it.
+                # Here we just blindly assign all structures for the class, BUT apply discount if Full Fee and Tuition Fee.
+                is_tuition = (head.name == "Tuition Fee")
+                discount_pct = 5.0 if (payment_pref == "Full Fee" and is_tuition) else 0.0
+                discount_amt = float(fs.amount) * (discount_pct / 100.0)
+                final_amt = float(fs.amount) - discount_amt
+                
+                assignment = models.StudentFeeAssignment(
+                    id=str(uuid.uuid4()),
+                    student_id=student_id,
+                    fee_head_id=fs.fee_head_id,
+                    term=fs.term,
+                    original_amount=fs.amount,
+                    discount_percentage=discount_pct,
+                    discount_amount=discount_amt,
+                    final_amount=final_amt,
+                    amount_paid=0.0
+                )
+                db.add(assignment)
+                
     db.commit()
     db.refresh(db_student)
     return db_student

@@ -17,6 +17,22 @@ class Branch(Base):
     contact_phone = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
 
+class FeeHead(Base):
+    __tablename__ = "fee_heads"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, unique=True, nullable=False)
+
+class FeeStructure(Base):
+    __tablename__ = "fee_structures"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    branch_id = Column(String, ForeignKey("branches.id"), nullable=False)
+    class_id = Column(String, ForeignKey("classes.id"), nullable=False)
+    fee_head_id = Column(String, ForeignKey("fee_heads.id"), nullable=False)
+    term = Column(String, nullable=True) # Term 1, Term 2, Term 3
+    amount = Column(Numeric(10, 2), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class User(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -54,11 +70,25 @@ class Student(Base):
     dob = Column(Date, nullable=True)
     blood_group = Column(String, nullable=True)
     status = Column(String, default="ACTIVE")
+    payment_preference = Column(String, default="Term Wise") # 'Full Fee' or 'Term Wise'
     
     parent = relationship("Parent", back_populates="students")
     student_class = relationship("Class", back_populates="students")
     attendance = relationship("Attendance", back_populates="student")
     fees = relationship("FeeSummary", back_populates="student", uselist=False)
+
+class StudentFeeAssignment(Base):
+    __tablename__ = "student_fee_assignments"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    student_id = Column(String, ForeignKey("students.id"), nullable=False)
+    fee_head_id = Column(String, ForeignKey("fee_heads.id"), nullable=False)
+    term = Column(String, nullable=True)
+    original_amount = Column(Numeric(10, 2), nullable=False)
+    discount_percentage = Column(Numeric(5, 2), default=0.0)
+    discount_amount = Column(Numeric(10, 2), default=0.0)
+    final_amount = Column(Numeric(10, 2), nullable=False)
+    amount_paid = Column(Numeric(10, 2), default=0.0)
+    due_date = Column(Date, nullable=True)
 
 class Attendance(Base):
     __tablename__ = "attendance"
