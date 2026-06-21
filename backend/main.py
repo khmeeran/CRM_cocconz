@@ -872,22 +872,198 @@ def get_student_ledger(student_id: str, db: Session = Depends(get_db), current_u
     return history
 
 @app.get("/api/reports/outstanding")
-def get_outstanding_fees_report(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_outstanding_fees_report(export: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    assignments = db.query(models.StudentFeeAssignment).all()
+    from datetime import date
+    report = []
+    for a in assignments:
+        f_amt = float(a.final_amount)
+        p_amt = float(a.amount_paid or 0)
+        bal = f_amt - p_amt
+        if bal > 0:
+            s = db.query(models.Student).filter(models.Student.id == a.student_id).first()
+            fh = db.query(models.FeeHead).filter(models.FeeHead.id == a.fee_head_id).first()
+            status = "OVERDUE" if a.due_date and date.today() > a.due_date else "PARTIAL"
+            report.append({
+                "Student Name": s.name if s else "Unknown",
+                "Admission No": s.roll_no if s else "",
+                "Fee Head": fh.name if fh else "Unknown",
+                "Total Amount": f_amt,
+                "Paid": p_amt,
+                "Balance": bal,
+                "Status": status
+            })
+            
+    if export == "pdf":
+        filepath = services.ExportService.generate_pdf(report, "Outstanding Fees Report", "outstanding_fees")
+        return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+    elif export == "excel":
+        filepath = services.ExportService.generate_excel(report, "outstanding_fees")
+        return FileResponse(filepath, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(filepath))
+        
+    return sorted(report, key=lambda x: x['Balance'], reverse=True)
+
+@app.get("/api/reports/daily")
+def get_daily_report(date_str: str = None, export: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    from datetime import date, datetime
+    
+    if not date_str:
+        target_date = date.today()
+    else:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        
+    payments = db.query(models.PaymentHistory).all()
+    report_data = []
+    
+    total_coll = 0
+    receipts_gen = 0
+    students_paid = set()
+    
+    for p in payments:
+        if p.payment_date.date() == target_date:
+            total_coll += float(p.amount)
+            receipts_gen += 1
+            students_paid.add(p.student_id)
+            s = db.query(models.Student).filter(models.Student.id == p.student_id).first()
+            fh = db.query(models.FeeHead).filter(models.FeeHead.id == p.fee_head_id).first()
+            report_data.append({
+                "Receipt No": p.receipt_no,
+                "Student": s.name if s else "Unknown",
+                "Fee Head": fh.name if fh else "Unknown",
+                "Mode": p.payment_mode,
+                "Amount": float(p.amount)
+            })
+            
+    summary = {
+        "collections": total_coll,
+        "receipts_generated": receipts_gen,
+        "students_paid": len(students_paid),
+        "date": target_date.isoformat()
+    }
+    
+    if export == "pdf":
+        filepath = services.ExportService.generate_pdf(report_data, f"Daily Collection Report - {target_date}", "daily_report")
+        return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+    elif export == "excel":
+        filepath = services.ExportService.generate_excel(report_data, "daily_report")
+        return FileResponse(filepath, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(filepath))
+        
+    return {"summary": summary, "data": report_data}
+
+@app.get("/api/reports/monthly")
+def get_monthly_report(year: int = None, month: int = None, export: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    from datetime import date
+    if not year or not month:
+        today = date.today()
+        year = today.year
+        month = today.month
+        
+    payments = db.query(models.PaymentHistory).all()
+    total_coll = 0
+    report_data = []
+    
+    for p in payments:
+        if p.payment_date.year == year and p.payment_date.month == month:
+            total_coll += float(p.amount)
+            s = db.query(models.Student).filter(models.Student.id == p.student_id).first()
+            fh = db.query(models.FeeHead).filter(models.FeeHead.id == p.fee_head_id).first()
+            report_data.append({
+                "Date": p.payment_date.strftime("%Y-%m-%d"),
+                "Receipt No": p.receipt_no,
+                "Student": s.name if s else "Unknown",
+                "Fee Head": fh.name if fh else "Unknown",
+                "Amount": float(p.amount)
+            })
+            
+    assignments = db.query(models.StudentFeeAssignment).all()
+    discounts = 0
+    outstanding = 0
+    for a in assignments:
+        discounts += float(a.discount_amount)
+        bal = float(a.final_amount) - float(a.amount_paid or 0)
+        if bal > 0: outstanding += bal
+        
+    summary = {
+        "total_collection": total_coll,
+        "discounts_given": discounts,
+        "outstanding_balance": outstanding,
+        "period": f"{year}-{month:02d}"
+    }
+    
+    if export == "pdf":
+        filepath = services.ExportService.generate_pdf(report_data, f"Monthly Collection Report - {year}/{month:02d}", "monthly_report")
+        return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+    elif export == "excel":
+        filepath = services.ExportService.generate_excel(report_data, "monthly_report")
+        return FileResponse(filepath, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(filepath))
+
+    return {"summary": summary, "data": report_data}
+
+@app.get("/api/reports/branch")
+def get_branch_report(branch_id: str = None, export: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    # We map "branch" artificially for now as "Main" since we removed branch logic mostly
+    students = db.query(models.Student).all()
+    assignments = db.query(models.StudentFeeAssignment).all()
+    payments = db.query(models.PaymentHistory).all()
+    
+    student_count = len(students)
+    coll_total = sum(float(p.amount) for p in payments)
+    out_total = sum((float(a.final_amount) - float(a.amount_paid or 0)) for a in assignments if float(a.final_amount) > float(a.amount_paid or 0))
+    
+    summary = {
+        "student_count": student_count,
+        "collection_total": coll_total,
+        "outstanding_total": out_total,
+        "branch": "Main"
+    }
+    
+    report_data = [{"Metric": k.replace("_", " ").title(), "Value": v} for k, v in summary.items()]
+    
+    if export == "pdf":
+        filepath = services.ExportService.generate_pdf(report_data, "Branch Report - Main", "branch_report")
+        return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+    elif export == "excel":
+        filepath = services.ExportService.generate_excel(report_data, "branch_report")
+        return FileResponse(filepath, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(filepath))
+        
+    return summary
+
+@app.get("/api/reports/students")
+def get_students_report(export: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
     students = db.query(models.Student).all()
-    report = []
+    
+    total_students = len(students)
+    active_students = sum(1 for s in students if s.status == "ACTIVE")
+    admitted_students = sum(1 for s in students if s.status == "ADMITTED")
+    
+    summary = {
+        "total_students": total_students,
+        "active_students": active_students,
+        "admitted_students": admitted_students
+    }
+    
+    report_data = []
     for s in students:
-        if s.fees and s.fees.pending_balance > 0:
-            report.append({
-                "student_id": s.id,
-                "name": s.name,
-                "roll_no": s.roll_no,
-                "class_name": s.student_class.name if s.student_class else "",
-                "parent_name": s.parent.father_name or s.parent.mother_name if s.parent else "",
-                "parent_phone": s.parent.primary_phone if s.parent else "",
-                "pending_balance": float(s.fees.pending_balance)
-            })
-    return sorted(report, key=lambda x: x['pending_balance'], reverse=True)
+        report_data.append({
+            "Name": s.name,
+            "Roll No": s.roll_no,
+            "Status": s.status,
+            "Class": s.student_class.name if s.student_class else "Unknown"
+        })
+        
+    if export == "pdf":
+        filepath = services.ExportService.generate_pdf(report_data, "Student Report", "student_report")
+        return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+    elif export == "excel":
+        filepath = services.ExportService.generate_excel(report_data, "student_report")
+        return FileResponse(filepath, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(filepath))
+        
+    return {"summary": summary, "data": report_data}
 
 # --- Staff Management ---
 @app.post("/api/staff", response_model=schemas.Staff)
