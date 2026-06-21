@@ -524,8 +524,8 @@ def get_students(class_id: str = None, skip: int = 0, limit: int = 100, db: Sess
     if class_id:
         query = query.filter(models.Student.class_id == class_id)
     
-    # Exclude enquiries from standard student list
-    query = query.filter(models.Student.status.in_(["ACTIVE", "ADMITTED", "INACTIVE"]))
+    # Exclude enquiries from standard student list (preserving all legacy mixed-case statuses)
+    query = query.filter(~models.Student.status.in_(["ENQUIRY", "Enquiry", "FOLLOW_UP", "Follow Up"]))
     
     # Enforce maximum limit for production safety
     if limit > 500:
