@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { IndianRupee, Users, ArrowUpRight, ArrowDownRight, Clock, MapPin, TrendingUp, CheckCircle, Plus } from 'lucide-react';
+import { IndianRupee, Users, ArrowUpRight, ArrowDownRight, Clock, MapPin, TrendingUp, CheckCircle, Plus, AlertCircle } from 'lucide-react';
 
 export default function AdminDashboard() {
     const [dateString, setDateString] = useState('');
