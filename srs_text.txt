@@ -1,0 +1,40 @@
+Software Requirement Specification (SRS)
+ Cocoonz Preschool & School CRM
+1. Introduction
+This document defines requirements for a multi-branch School CRM and Fee Management System.
+2. Objectives
+Manage admissions, fee collection, branches, classes, daycare, activities, reporting and
+communication.
+3. User Roles
+Super Admin, Branch Admin, Accountant, Teacher, Parent (optional portal).
+4. Branch Management
+Create and manage multiple school branches with separate fee structures and reports.
+5. Student Management
+Admission, profile management, class allocation, parent details and document management.
+6. Fee Structure Module
+Admission Fee, Tuition Fee, Book Fee, Skill Development Charges, After School Activities Fee and
+Daycare Fee.
+7. Fee Type Logic
+Full Fee with 5% tuition discount and Term Wise collection with Term 1, Term 2 and Term 3.
+8. Admission Workflow
+Enquiry → Registration → Admission → Fee Assignment → Receipt Generation.
+9. Fee Collection Workflow
+Generate dues, collect payments, print receipts, track balances and overdue amounts.
+10. Dashboard
+Collection summary, dues, admissions, branch performance and monthly trends.
+11. Reports
+Daily, Monthly, Branch-wise, Class-wise, Outstanding, Discount and Collection reports.
+12. Notifications
+SMS, WhatsApp and Email reminders for due fees and announcements.
+13. Database Tables
+
+Branches, Classes, Students, Parents, Fee Structure, Student Fee Mapping, Collections, Receipts,
+Users and Roles.
+14. Security
+Role-based access, audit logs, backups and secure authentication.
+15. Technical Stack
+Frontend: React. Backend: Laravel/ASP.NET Core. Database: MySQL/PostgreSQL. Mobile App:
+Flutter.
+16. Future Enhancements
+Attendance, Transport, Payroll, Inventory, Parent App and Learning Management.
+

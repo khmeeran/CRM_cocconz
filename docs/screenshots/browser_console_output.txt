@@ -1,0 +1,6 @@
+[WARNING] devtools://devtools/bundled/ui/components/helpers/helpers.js 0:375 "\u003CDevTools deprecation warning> components/helpers: CustomElements.defineComponent is deprecated."
+[WARNING] devtools://devtools/bundled/ui/components/helpers/helpers.js 0:375 "\u003CDevTools deprecation warning> components/helpers: CustomElements.defineComponent is deprecated."
+[WARNING] devtools://devtools/bundled/ui/components/helpers/helpers.js 0:375 "\u003CDevTools deprecation warning> components/helpers: CustomElements.defineComponent is deprecated."
+[WARNING] devtools://devtools/bundled/ui/components/helpers/helpers.js 0:375 "\u003CDevTools deprecation warning> components/helpers: CustomElements.defineComponent is deprecated."
+[SEVERE] devtools://devtools/bundled/Images/edge-run_command.svg - Failed to load resource: net::ERR_FAILED
+[SEVERE] devtools://devtools/bundled/panels/edge_welcome/edge_welcome.js 1:2841 "Failed to fetch icon: devtools://devtools/bundled/Images/edge-run_command.svg\nTypeError: Failed to fetch"

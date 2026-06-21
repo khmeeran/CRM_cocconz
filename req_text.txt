@@ -1,0 +1,22 @@
+School CRM Development Requirement Document
+ – Cocoonz Preschool & School
+Project Overview
+Develop a School CRM and Fee Management System to manage student admissions, branches,
+classes, fee collection, receipts, reports, and due tracking.
+Modules
+1. Branch Management 2. Student Management 3. Class Management 4. Fee Structure
+Management 5. Fee Collection 6. Receipt Generation 7. Due Management 8. Reports 9.
+Dashboard 10. User Roles
+Fee Heads
+Admission Fee, Tuition Fee, Book Fee, Skill Development Charges, After School Activities Fee,
+Daycare Fee
+Fee Types
+Full Fee: 5% discount on Tuition Fee. Term Wise: Term 1, Term 2, Term 3.
+Student Fields
+Admission Number, Student Name, Class, Branch, Fee Type, Parent Details, Contact Information.
+Reports
+Daily Collection, Monthly Collection, Branch-wise Collection, Outstanding Fees, Discount Report,
+Student Lists.
+User Roles
+Super Admin, Branch Admin, Accountant, Teacher.
+
