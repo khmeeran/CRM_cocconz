@@ -180,12 +180,17 @@ class FeeSummary(BaseModel):
 
 class PaymentCreate(BaseModel):
     student_id: str
+    assignment_id: str
+    fee_head_id: str
     amount: Decimal
     payment_mode: str # 'CASH', 'UPI', 'BANK'
     receipt_no: Optional[str] = None
 
 class PaymentHistory(BaseModel):
     id: str
+    student_id: str
+    assignment_id: Optional[str]
+    fee_head_id: Optional[str]
     amount: Decimal
     payment_date: datetime
     payment_mode: str

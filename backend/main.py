@@ -561,6 +561,67 @@ def get_students(class_id: str = None, skip: int = 0, limit: int = 100, db: Sess
         })
     return result
 
+# --- Fee Heads & Structures ---
+
+@app.get("/api/fee-heads", response_model=List[schemas.FeeHead])
+def get_fee_heads(db: Session = Depends(get_db)):
+    return db.query(models.FeeHead).all()
+
+@app.post("/api/seed-fee-heads")
+def seed_fee_heads(db: Session = Depends(get_db)):
+    heads = ["Admission Fee", "Tuition Fee", "Book Fee", "Skill Development Charges", "After School Activities Fee", "Daycare Fee"]
+    import uuid
+    for h in heads:
+        if not db.query(models.FeeHead).filter(models.FeeHead.name == h).first():
+            db.add(models.FeeHead(id=str(uuid.uuid4()), name=h))
+    db.commit()
+    return {"status": "seeded"}
+
+@app.get("/api/fee-structures", response_model=List[schemas.FeeStructure])
+def get_fee_structures(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    return db.query(models.FeeStructure).offset(skip).limit(limit).all()
+
+@app.post("/api/fee-structures", response_model=schemas.FeeStructure)
+def create_fee_structure(fee_data: schemas.FeeStructureCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    if fee_data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    import uuid
+    db_fs = models.FeeStructure(**fee_data.dict())
+    db_fs.id = str(uuid.uuid4())
+    db.add(db_fs)
+    db.commit()
+    db.refresh(db_fs)
+    return db_fs
+
+@app.put("/api/fee-structures/{fee_id}", response_model=schemas.FeeStructure)
+def update_fee_structure(fee_id: str, fee_data: schemas.FeeStructureUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    db_fs = db.query(models.FeeStructure).filter(models.FeeStructure.id == fee_id).first()
+    if not db_fs: raise HTTPException(status_code=404, detail="Fee Structure not found")
+    if fee_data.amount is not None and fee_data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    for key, value in fee_data.dict(exclude_unset=True).items(): setattr(db_fs, key, value)
+    db.commit()
+    db.refresh(db_fs)
+    return db_fs
+
+@app.delete("/api/fee-structures/{fee_id}")
+def delete_fee_structure(fee_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    db_fs = db.query(models.FeeStructure).filter(models.FeeStructure.id == fee_id).first()
+    if not db_fs: raise HTTPException(status_code=404)
+    db.delete(db_fs)
+    db.commit()
+    return {"status": "success"}
+
+@app.get("/api/student-fee-assignments", response_model=List[schemas.StudentFeeAssignment])
+def get_student_fee_assignments(student_id: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    q = db.query(models.StudentFeeAssignment)
+    if student_id: q = q.filter(models.StudentFeeAssignment.student_id == student_id)
+    return q.all()
+
 # --- Attendance ---
 @app.get("/api/attendance/check")
 def check_attendance(class_id: str, date: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -1152,6 +1213,112 @@ def export_students_pdf(db: Session = Depends(get_db), current_user: models.User
         })
     filepath = services.ExportService.generate_pdf(data, "Student List", "students")
     return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+
+# --- Collections & Ledger ---
+
+@app.get("/api/collections")
+def get_collections(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT"])
+    # Just return payment history joined with assignments
+    payments = db.query(models.PaymentHistory).order_by(models.PaymentHistory.payment_date.desc()).all()
+    res = []
+    for p in payments:
+        student = db.query(models.Student).filter(models.Student.id == p.student_id).first()
+        res.append({
+            "id": p.id,
+            "student_name": student.name if student else "Unknown",
+            "amount": float(p.amount),
+            "payment_date": p.payment_date.isoformat(),
+            "payment_mode": p.payment_mode,
+            "receipt_no": p.receipt_no,
+            "recorded_by": p.recorded_by
+        })
+    return res
+
+@app.post("/api/collections")
+def create_collection(data: schemas.PaymentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT", "OFFICE"])
+    assignment = db.query(models.StudentFeeAssignment).filter(models.StudentFeeAssignment.id == data.assignment_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Fee Assignment not found")
+        
+    amount = float(data.amount)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be > 0")
+        
+    final_amount = float(assignment.final_amount)
+    amount_paid = float(assignment.amount_paid or 0)
+    balance = final_amount - amount_paid
+    
+    if amount > balance:
+        raise HTTPException(status_code=400, detail=f"Overpayment! Outstanding balance is only {balance}")
+        
+    # Valid payment
+    import uuid
+    from datetime import datetime
+    receipt = data.receipt_no or f"REC-{uuid.uuid4().hex[:8].upper()}"
+    
+    payment = models.PaymentHistory(
+        id=str(uuid.uuid4()),
+        student_id=data.student_id,
+        assignment_id=data.assignment_id,
+        fee_head_id=data.fee_head_id,
+        amount=amount,
+        payment_date=datetime.utcnow(),
+        payment_mode=data.payment_mode,
+        receipt_no=receipt,
+        recorded_by=current_user.id
+    )
+    db.add(payment)
+    
+    # Update assignment
+    assignment.amount_paid = amount_paid + amount
+    db.commit()
+    db.refresh(payment)
+    return {"status": "success", "receipt_no": receipt}
+
+@app.get("/api/students/{id}/outstanding")
+def get_student_outstanding(id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT", "OFFICE", "TEACHER"])
+    assignments = db.query(models.StudentFeeAssignment).filter(models.StudentFeeAssignment.student_id == id).all()
+    res = []
+    total_due = 0
+    total_paid = 0
+    for a in assignments:
+        fh = db.query(models.FeeHead).filter(models.FeeHead.id == a.fee_head_id).first()
+        f_amount = float(a.final_amount)
+        a_paid = float(a.amount_paid or 0)
+        bal = f_amount - a_paid
+        total_due += f_amount
+        total_paid += a_paid
+        res.append({
+            "assignment_id": a.id,
+            "fee_head_id": a.fee_head_id,
+            "fee_head_name": fh.name if fh else "Unknown",
+            "term": a.term,
+            "final_amount": f_amount,
+            "amount_paid": a_paid,
+            "balance": bal
+        })
+    return {"assignments": res, "total_due": total_due, "total_paid": total_paid, "total_balance": total_due - total_paid}
+
+@app.get("/api/students/{id}/ledger")
+def get_student_ledger(id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT", "OFFICE", "TEACHER"])
+    payments = db.query(models.PaymentHistory).filter(models.PaymentHistory.student_id == id).order_by(models.PaymentHistory.payment_date.desc()).all()
+    res = []
+    for p in payments:
+        fh = db.query(models.FeeHead).filter(models.FeeHead.id == p.fee_head_id).first() if p.fee_head_id else None
+        res.append({
+            "id": p.id,
+            "fee_head_name": fh.name if fh else "General",
+            "amount": float(p.amount),
+            "payment_date": p.payment_date.isoformat(),
+            "payment_mode": p.payment_mode,
+            "receipt_no": p.receipt_no,
+            "recorded_by": p.recorded_by
+        })
+    return res
 
 # Serve Next.js frontend pages and handle fallbacks
 @app.get("/{path:path}")

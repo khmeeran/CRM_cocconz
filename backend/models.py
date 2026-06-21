@@ -115,6 +115,8 @@ class PaymentHistory(Base):
     __tablename__ = "payment_history"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     student_id = Column(String, ForeignKey("students.id"))
+    assignment_id = Column(String, ForeignKey("student_fee_assignments.id"), nullable=True)
+    fee_head_id = Column(String, ForeignKey("fee_heads.id"), nullable=True)
     amount = Column(Numeric(10, 2))
     payment_date = Column(DateTime, default=datetime.utcnow)
     payment_mode = Column(String)  # 'CASH', 'UPI', 'BANK'
