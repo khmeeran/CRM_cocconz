@@ -1402,6 +1402,107 @@ def get_receipt_pdf(receipt_no: str, db: Session = Depends(get_db)):
         
     return FileResponse(path, media_type='application/pdf', filename=f"Receipt_{receipt_no}.pdf")
 
+# --- Due Management ---
+
+def calculate_due_status(balance: float, final_amount: float, due_date) -> str:
+    from datetime import date
+    if balance <= 0: return "PAID"
+    if due_date and date.today() > due_date: return "OVERDUE"
+    if balance < final_amount: return "PARTIAL"
+    return "PARTIAL" # Or "UNPAID" if 0 is paid, but rules say 0 < balance < final_amount for PARTIAL. Let's make it simple.
+    
+def get_due_object(a, s, fh):
+    from datetime import date
+    f_amt = float(a.final_amount)
+    p_amt = float(a.amount_paid or 0)
+    bal = f_amt - p_amt
+    
+    status = "PAID"
+    if bal > 0:
+        if a.due_date and date.today() > a.due_date:
+            status = "OVERDUE"
+        elif p_amt > 0:
+            status = "PARTIAL"
+        else:
+            # If no due date, and nothing paid, it's PARTIAL? User said "PARTIAL: 0 < balance < final_amount". 
+            # If balance == final_amount, technically "UNPAID", but user only specified PAID, PARTIAL, OVERDUE. 
+            # Let's use PARTIAL or OVERDUE based on date.
+            status = "PARTIAL"
+            if a.due_date and date.today() > a.due_date:
+                status = "OVERDUE"
+    
+    return {
+        "assignment_id": a.id,
+        "student_id": s.id if s else None,
+        "student_name": s.name if s else "Unknown",
+        "roll_no": s.roll_no if s else "",
+        "branch": "Main",
+        "class_name": s.student_class.name if s and s.student_class else "Unknown",
+        "fee_head": fh.name if fh else "Unknown",
+        "original_amount": float(a.original_amount),
+        "discount_amount": float(a.discount_amount),
+        "final_amount": f_amt,
+        "amount_paid": p_amt,
+        "balance": bal,
+        "status": status,
+        "due_date": a.due_date.isoformat() if a.due_date else None
+    }
+
+@app.get("/api/dues/summary")
+def get_dues_summary(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT", "OFFICE"])
+    assignments = db.query(models.StudentFeeAssignment).all()
+    from datetime import date
+    total_out = 0
+    total_over = 0
+    students_with_dues = set()
+    total_final = 0
+    total_paid = 0
+    
+    for a in assignments:
+        f_amt = float(a.final_amount)
+        p_amt = float(a.amount_paid or 0)
+        bal = f_amt - p_amt
+        total_final += f_amt
+        total_paid += p_amt
+        
+        if bal > 0:
+            total_out += bal
+            students_with_dues.add(a.student_id)
+            if a.due_date and date.today() > a.due_date:
+                total_over += bal
+                
+    rec_perc = (total_paid / total_final * 100) if total_final > 0 else 100
+    
+    return {
+        "total_outstanding": total_out,
+        "total_overdue": total_over,
+        "students_with_dues": len(students_with_dues),
+        "recovery_percentage": round(rec_perc, 2)
+    }
+
+@app.get("/api/dues")
+def get_all_dues(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT", "OFFICE"])
+    assignments = db.query(models.StudentFeeAssignment).all()
+    res = []
+    for a in assignments:
+        s = db.query(models.Student).filter(models.Student.id == a.student_id).first()
+        fh = db.query(models.FeeHead).filter(models.FeeHead.id == a.fee_head_id).first()
+        res.append(get_due_object(a, s, fh))
+    return res
+
+@app.get("/api/dues/{student_id}")
+def get_student_dues(student_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT", "OFFICE"])
+    assignments = db.query(models.StudentFeeAssignment).filter(models.StudentFeeAssignment.student_id == student_id).all()
+    res = []
+    for a in assignments:
+        s = db.query(models.Student).filter(models.Student.id == a.student_id).first()
+        fh = db.query(models.FeeHead).filter(models.FeeHead.id == a.fee_head_id).first()
+        res.append(get_due_object(a, s, fh))
+    return res
+
 # Serve Next.js frontend pages and handle fallbacks
 @app.get("/{path:path}")
 def serve_frontend(path: str):
