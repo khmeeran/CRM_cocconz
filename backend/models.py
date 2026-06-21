@@ -46,6 +46,8 @@ class Class(Base):
     name = Column(String)
     section = Column(String)
     division = Column(String, nullable=True)
+    branch_id = Column(String, ForeignKey("branches.id"), nullable=True)
+    academic_year = Column(String, nullable=True, default="2026-2027")
     __table_args__ = (UniqueConstraint('name', 'section', name='_class_section_uc'),)
     students = relationship("Student", back_populates="student_class")
 
@@ -120,8 +122,11 @@ class PaymentHistory(Base):
     amount = Column(Numeric(10, 2))
     payment_date = Column(DateTime, default=datetime.utcnow)
     payment_mode = Column(String)  # 'CASH', 'UPI', 'BANK'
-    receipt_no = Column(String, nullable=True)
+    receipt_no = Column(String, unique=True, index=True, nullable=True)
     recorded_by = Column(String, ForeignKey("users.id"))
+    balance_due = Column(Numeric(10, 2), default=0.00, nullable=False)
+    receipt_status = Column(String, default='ACTIVE', nullable=False, index=True)
+    remarks = Column(String, nullable=True)
 
 class Broadcast(Base):
     __tablename__ = "broadcasts"

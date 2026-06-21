@@ -196,6 +196,9 @@ class PaymentHistory(BaseModel):
     payment_mode: str
     receipt_no: Optional[str]
     recorded_by: str
+    balance_due: Decimal
+    receipt_status: str
+    remarks: Optional[str]
     class Config:
         from_attributes = True
 

@@ -354,6 +354,28 @@ def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), cu
         limit = 100
     return db.query(models.User).offset(skip).limit(limit).all()
 
+DEFAULT_SCHOOL_TEMPLATE = [
+    {"name": "Pre-KG", "section": "A", "division": "Preschool"},
+    {"name": "LKG", "section": "A", "division": "Preschool"},
+    {"name": "UKG", "section": "A", "division": "Preschool"},
+    {"name": "Class 1", "section": "A", "division": "Primary"},
+    {"name": "Class 2", "section": "A", "division": "Primary"},
+    {"name": "Class 3", "section": "A", "division": "Primary"},
+    {"name": "Class 4", "section": "A", "division": "Primary"},
+    {"name": "Class 5", "section": "A", "division": "Primary"},
+]
+
+def apply_school_template(branch_id: str, db: Session, template: list = DEFAULT_SCHOOL_TEMPLATE):
+    for cls in template:
+        new_class = models.Class(
+            name=cls["name"],
+            section=cls["section"],
+            division=cls["division"],
+            branch_id=branch_id,
+            academic_year="2026-2027"
+        )
+        db.add(new_class)
+
 # --- Branches ---
 @app.post("/api/branches", response_model=schemas.Branch)
 def create_branch(branch: schemas.BranchCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -364,6 +386,10 @@ def create_branch(branch: schemas.BranchCreate, db: Session = Depends(get_db), c
         
     db_branch = models.Branch(**branch.dict())
     db.add(db_branch)
+    db.flush()  # Ensure db_branch.id is populated
+    
+    apply_school_template(db_branch.id, db)
+    
     db.commit()
     db.refresh(db_branch)
     return db_branch
@@ -456,7 +482,22 @@ def create_class(class_data: schemas.ClassCreate, db: Session = Depends(get_db),
 @app.get("/api/classes", response_model=List[schemas.Class])
 def get_classes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     check_role(current_user, ["ADMIN", "OFFICE", "TEACHER", "ACCOUNTANT"])
-    return db.query(models.Class).all()
+    from sqlalchemy import case
+    order_rule = case(
+        {
+            "Pre-KG": 1,
+            "LKG": 2,
+            "UKG": 3,
+            "Class 1": 4,
+            "Class 2": 5,
+            "Class 3": 6,
+            "Class 4": 7,
+            "Class 5": 8
+        },
+        value=models.Class.name,
+        else_=99
+    )
+    return db.query(models.Class).order_by(order_rule, models.Class.section).all()
 
 # --- Parents ---
 @app.get("/api/parents", response_model=List[schemas.Parent])
@@ -1434,6 +1475,10 @@ def create_collection(data: schemas.PaymentCreate, db: Session = Depends(get_db)
     from datetime import datetime
     receipt = data.receipt_no or f"REC-{uuid.uuid4().hex[:8].upper()}"
     
+    # Ensure receipt_no uniqueness
+    while db.query(models.PaymentHistory).filter(models.PaymentHistory.receipt_no == receipt).first():
+        receipt = f"REC-{uuid.uuid4().hex[:8].upper()}"
+    
     payment = models.PaymentHistory(
         id=str(uuid.uuid4()),
         student_id=data.student_id,
@@ -1443,7 +1488,9 @@ def create_collection(data: schemas.PaymentCreate, db: Session = Depends(get_db)
         payment_date=datetime.utcnow(),
         payment_mode=data.payment_mode,
         receipt_no=receipt,
-        recorded_by=current_user.id
+        recorded_by=current_user.id,
+        balance_due=balance - amount,
+        receipt_status="ACTIVE"
     )
     db.add(payment)
     
@@ -1495,6 +1542,42 @@ def get_student_ledger(id: str, db: Session = Depends(get_db), current_user: mod
             "recorded_by": p.recorded_by
         })
     return res
+
+from pydantic import BaseModel
+
+class ReceiptStatusUpdate(BaseModel):
+    status: str
+    remarks: Optional[str] = None
+
+@app.patch("/api/receipts/{receipt_no}/status")
+def update_receipt_status(receipt_no: str, data: ReceiptStatusUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT"])
+    valid_statuses = ["ACTIVE", "VOID", "REFUNDED", "REVERSED"]
+    if data.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {valid_statuses}")
+        
+    payment = db.query(models.PaymentHistory).filter(models.PaymentHistory.receipt_no == receipt_no).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+        
+    if payment.receipt_status != "ACTIVE" and data.status != "ACTIVE":
+        raise HTTPException(status_code=400, detail="Receipt is already in a terminal state.")
+        
+    if data.status in ["VOID", "REFUNDED", "REVERSED"]:
+        if not data.remarks:
+            raise HTTPException(status_code=400, detail="Remarks are required when reversing a receipt.")
+        # Reverse the payment on the assignment
+        assignment = db.query(models.StudentFeeAssignment).filter(models.StudentFeeAssignment.id == payment.assignment_id).first()
+        if assignment:
+            assignment.amount_paid = float(assignment.amount_paid or 0) - float(payment.amount)
+            # We do NOT change the balance_due on the payment_history row. It's a historical snapshot.
+    
+    payment.receipt_status = data.status
+    if data.remarks:
+        payment.remarks = data.remarks
+        
+    db.commit()
+    return {"status": "success", "receipt_status": payment.receipt_status}
 
 @app.get("/api/receipts")
 def get_receipts(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
