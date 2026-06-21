@@ -524,6 +524,9 @@ def get_students(class_id: str = None, skip: int = 0, limit: int = 100, db: Sess
     if class_id:
         query = query.filter(models.Student.class_id == class_id)
     
+    # Exclude enquiries from standard student list
+    query = query.filter(models.Student.status.in_(["ACTIVE", "ADMITTED", "INACTIVE"]))
+    
     # Enforce maximum limit for production safety
     if limit > 500:
         limit = 500
@@ -629,6 +632,61 @@ def delete_student(student_id: str, db: Session = Depends(get_db), current_user:
     db.delete(db_student)
     db.commit()
     return {"status": "success", "message": "Student deleted"}
+
+# --- Admissions ---
+
+@app.get("/api/admissions", response_model=List[schemas.Student])
+def get_admissions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    from sqlalchemy.orm import joinedload
+    return db.query(models.Student).options(
+        joinedload(models.Student.parent),
+        joinedload(models.Student.student_class)
+    ).filter(models.Student.status.in_(["ENQUIRY", "FOLLOW_UP", "ADMITTED"])).offset(skip).limit(limit).all()
+
+@app.post("/api/admissions", response_model=schemas.Student)
+def create_admission(enquiry: schemas.AdmissionCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    import uuid
+    
+    parent = db.query(models.Parent).filter(models.Parent.primary_phone == enquiry.primary_phone).first()
+    if not parent:
+        parent = models.Parent(
+            id=str(uuid.uuid4()),
+            father_name=enquiry.parent_name,
+            primary_phone=enquiry.primary_phone
+        )
+        db.add(parent)
+        db.flush()
+        
+    student = models.Student(
+        id=str(uuid.uuid4()),
+        name=enquiry.name,
+        roll_no=f"ENQ-{str(uuid.uuid4())[:8].upper()}",
+        class_id=enquiry.class_id,
+        parent_id=parent.id,
+        dob=enquiry.dob,
+        status=enquiry.status
+    )
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+    return student
+
+@app.put("/api/admissions/{student_id}", response_model=schemas.Student)
+def update_admission(student_id: str, adm_data: schemas.AdmissionUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE"])
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not db_student:
+        raise HTTPException(status_code=404, detail="Student not found")
+        
+    if adm_data.name: db_student.name = adm_data.name
+    if adm_data.class_id: db_student.class_id = adm_data.class_id
+    if adm_data.status: db_student.status = adm_data.status
+    
+    db.commit()
+    db.refresh(db_student)
+    return db_student
 
 # --- Dashboard ---
 @app.get("/api/dashboard")

@@ -85,6 +85,20 @@ class Student(StudentBase):
     class Config:
         from_attributes = True
 
+class AdmissionCreate(BaseModel):
+    name: str
+    class_id: str
+    parent_name: str
+    primary_phone: str
+    dob: Optional[date] = None
+    status: Optional[str] = "ENQUIRY" # ENQUIRY, FOLLOW_UP, ADMITTED
+    notes: Optional[str] = None # We can store notes in blood_group temporarily or just ignore, wait we shouldn't hack the DB. Let's just map it to student.
+
+class AdmissionUpdate(BaseModel):
+    name: Optional[str] = None
+    class_id: Optional[str] = None
+    status: Optional[str] = None
+
 class AttendanceBase(BaseModel):
     student_id: str
     date: date
