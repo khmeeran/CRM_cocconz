@@ -1320,6 +1320,88 @@ def get_student_ledger(id: str, db: Session = Depends(get_db), current_user: mod
         })
     return res
 
+@app.get("/api/receipts")
+def get_receipts(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT", "OFFICE"])
+    payments = db.query(models.PaymentHistory).order_by(models.PaymentHistory.payment_date.desc()).all()
+    res = []
+    for p in payments:
+        s = db.query(models.Student).filter(models.Student.id == p.student_id).first()
+        fh = db.query(models.FeeHead).filter(models.FeeHead.id == p.fee_head_id).first()
+        a = db.query(models.StudentFeeAssignment).filter(models.StudentFeeAssignment.id == p.assignment_id).first()
+        res.append({
+            "receipt_no": p.receipt_no,
+            "receipt_date": p.payment_date.isoformat(),
+            "student_name": s.name if s else "Unknown",
+            "roll_no": s.roll_no if s else "",
+            "branch": "Unknown", # Wait, I will fix branch and class in the response object
+            "class_name": s.student_class.name if s and s.student_class else "Unknown",
+            "fee_head": fh.name if fh else "General",
+            "amount_paid": float(p.amount),
+            "balance_remaining": float(a.final_amount - a.amount_paid) if a else 0,
+            "collected_by": p.recorded_by,
+            "payment_mode": p.payment_mode
+        })
+    return res
+
+@app.get("/api/receipts/{receipt_no}")
+def get_receipt_detail(receipt_no: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT", "OFFICE"])
+    p = db.query(models.PaymentHistory).filter(models.PaymentHistory.receipt_no == receipt_no).first()
+    if not p: raise HTTPException(status_code=404, detail="Receipt not found")
+    
+    s = db.query(models.Student).filter(models.Student.id == p.student_id).first()
+    fh = db.query(models.FeeHead).filter(models.FeeHead.id == p.fee_head_id).first()
+    a = db.query(models.StudentFeeAssignment).filter(models.StudentFeeAssignment.id == p.assignment_id).first()
+    u = db.query(models.User).filter(models.User.id == p.recorded_by).first()
+    
+    # We don't have direct branch string easily mapped if s.branch is removed. Wait, class has a name. We can just say "Main".
+    # Since branch_id was removed from student in 2D, we will default to "Main"
+    return {
+        "receipt_no": p.receipt_no,
+        "receipt_date": p.payment_date.isoformat(),
+        "student_name": s.name if s else "Unknown",
+        "roll_no": s.roll_no if s else "",
+        "branch": "Main",
+        "class_name": s.student_class.name if s and s.student_class else "Unknown",
+        "fee_head": fh.name if fh else "General",
+        "amount_paid": float(p.amount),
+        "balance_remaining": float(a.final_amount - a.amount_paid) if a else 0,
+        "collected_by": u.username if u else p.recorded_by,
+        "payment_mode": p.payment_mode
+    }
+
+@app.get("/api/receipt/{receipt_no}/pdf")
+def get_receipt_pdf(receipt_no: str, db: Session = Depends(get_db)):
+    p = db.query(models.PaymentHistory).filter(models.PaymentHistory.receipt_no == receipt_no).first()
+    if not p: raise HTTPException(status_code=404, detail="Receipt not found")
+    
+    s = db.query(models.Student).filter(models.Student.id == p.student_id).first()
+    fh = db.query(models.FeeHead).filter(models.FeeHead.id == p.fee_head_id).first()
+    a = db.query(models.StudentFeeAssignment).filter(models.StudentFeeAssignment.id == p.assignment_id).first()
+    u = db.query(models.User).filter(models.User.id == p.recorded_by).first()
+    
+    pdf_bytes = services.ExportService.generate_receipt_pdf(
+        receipt_no=p.receipt_no,
+        student_name=s.name if s else "Unknown",
+        roll_no=s.roll_no if s else "",
+        branch="Main",
+        class_name=s.student_class.name if s and s.student_class else "Unknown",
+        fee_head=fh.name if fh else "General",
+        amount=float(p.amount),
+        balance=float(a.final_amount - a.amount_paid) if a else 0,
+        date=p.payment_date.strftime("%d %b %Y %H:%M"),
+        payment_mode=p.payment_mode,
+        collected_by=u.username if u else p.recorded_by
+    )
+    
+    import tempfile
+    fd, path = tempfile.mkstemp(suffix=".pdf")
+    with os.fdopen(fd, 'wb') as f:
+        f.write(pdf_bytes)
+        
+    return FileResponse(path, media_type='application/pdf', filename=f"Receipt_{receipt_no}.pdf")
+
 # Serve Next.js frontend pages and handle fallbacks
 @app.get("/{path:path}")
 def serve_frontend(path: str):

@@ -83,7 +83,7 @@ class ExportService:
         return filepath
 
     @staticmethod
-    def generate_receipt_pdf(receipt_no: str, student_name: str, roll_no: str, amount: float, date: str, payment_mode: str) -> bytearray:
+    def generate_receipt_pdf(receipt_no: str, student_name: str, roll_no: str, branch: str, class_name: str, fee_head: str, amount: float, balance: float, date: str, payment_mode: str, collected_by: str) -> bytearray:
         pdf = FPDF()
         pdf.add_page()
         
@@ -94,33 +94,23 @@ class ExportService:
         pdf.cell(190, 6, text="Official Fee Receipt", ln=True, align='C')
         pdf.ln(10)
         
-        # Details
-        pdf.set_font("Helvetica", 'B', 12)
-        pdf.cell(50, 10, text=f"Receipt No:", border=0)
-        pdf.set_font("Helvetica", '', 12)
-        pdf.cell(140, 10, text=str(receipt_no), border=0, ln=True)
+        def add_row(lbl, val):
+            pdf.set_font("Helvetica", 'B', 12)
+            pdf.cell(50, 10, text=str(lbl), border=0)
+            pdf.set_font("Helvetica", '', 12)
+            pdf.cell(140, 10, text=str(val), border=0, ln=True)
+
+        add_row("Receipt No:", receipt_no)
+        add_row("Date:", date)
+        add_row("Student Name:", student_name)
+        add_row("Admission No:", roll_no)
+        add_row("Branch:", branch)
+        add_row("Class:", class_name)
+        add_row("Fee Head:", fee_head)
+        add_row("Payment Mode:", payment_mode)
+        add_row("Collected By:", collected_by)
         
-        pdf.set_font("Helvetica", 'B', 12)
-        pdf.cell(50, 10, text=f"Date:", border=0)
-        pdf.set_font("Helvetica", '', 12)
-        pdf.cell(140, 10, text=str(date), border=0, ln=True)
-        
-        pdf.set_font("Helvetica", 'B', 12)
-        pdf.cell(50, 10, text=f"Student Name:", border=0)
-        pdf.set_font("Helvetica", '', 12)
-        pdf.cell(140, 10, text=str(student_name), border=0, ln=True)
-        
-        pdf.set_font("Helvetica", 'B', 12)
-        pdf.cell(50, 10, text=f"Admission No:", border=0)
-        pdf.set_font("Helvetica", '', 12)
-        pdf.cell(140, 10, text=str(roll_no), border=0, ln=True)
-        
-        pdf.set_font("Helvetica", 'B', 12)
-        pdf.cell(50, 10, text=f"Payment Mode:", border=0)
-        pdf.set_font("Helvetica", '', 12)
-        pdf.cell(140, 10, text=str(payment_mode), border=0, ln=True)
-        
-        pdf.ln(10)
+        pdf.ln(5)
         
         # Amount Box
         pdf.set_font("Helvetica", 'B', 14)
@@ -128,7 +118,12 @@ class ExportService:
         pdf.set_font("Helvetica", 'B', 16)
         pdf.cell(140, 15, text=f"INR {amount}", border=1, ln=True)
         
-        pdf.ln(20)
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.cell(50, 15, text="Balance Remaining:", border=1)
+        pdf.set_font("Helvetica", '', 14)
+        pdf.cell(140, 15, text=f"INR {balance}", border=1, ln=True)
+        
+        pdf.ln(10)
         pdf.set_font("Helvetica", 'I', 10)
         pdf.cell(190, 10, text="This is a computer generated receipt.", ln=True, align='C')
         
