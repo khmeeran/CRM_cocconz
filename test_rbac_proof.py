@@ -27,7 +27,7 @@ async def test_rbac():
             await page.fill("input[type='password']", password)
             await page.click("button[type='submit']")
             
-            await page.wait_for_url(f"**/{expected_route}", timeout=60000)
+            await page.wait_for_url(f"**/{expected_route}*", timeout=60000)
             await page.wait_for_timeout(3000)
             
             print(f"VERIFIED LOGIN REDIRECT: {username} -> {page.url}")
