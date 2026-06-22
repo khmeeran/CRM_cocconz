@@ -43,7 +43,7 @@ export default function AdminDashboard() {
                             <option value="north">North Campus</option>
                         </select>
                     </div>
-                    <button style={{ backgroundColor: '#0066FF', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 14px 0 rgba(0,102,255,0.39)' }}>
+                    <button onClick={() => window.location.href = '/admin/admissions'} style={{ backgroundColor: '#0066FF', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 14px 0 rgba(0,102,255,0.39)' }}>
                         <Plus size={18} /> New Admission
                     </button>
                 </div>
