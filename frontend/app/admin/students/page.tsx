@@ -21,6 +21,29 @@ interface ApiClass {
   name: string;
   section: string;
   division: string;
+'use client';
+
+import { useEffect, useState } from 'react';
+import { API_BASE } from '../../../lib/api';
+
+interface Student {
+  id: string;
+  name: string;
+  roll_no: string;
+  class_name: string;
+  section: string;
+  parent_name: string;
+  parent_phone: string;
+  address: string;
+  total_fees: number;
+  status: string;
+}
+
+interface ApiClass {
+  id: string;
+  name: string;
+  section: string;
+  division: string;
 }
 
 export default function StudentManagement() {
@@ -29,6 +52,7 @@ export default function StudentManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showAdmissionForm, setShowAdmissionForm] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   const [newStudent, setNewStudent] = useState<Partial<Student>>({
     name: '',
@@ -168,6 +192,24 @@ export default function StudentManagement() {
     } catch (err) {
       alert('Error connecting to server.');
     }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/students/${editingStudent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+        body: JSON.stringify({ name: editingStudent.name })
+      });
+      if (res.ok) {
+        setEditingStudent(null);
+        fetchStudents();
+      } else {
+        alert('Failed to update student');
+      }
+    } catch (err) {}
   };
 
   const filteredStudents = students.filter(s => 
@@ -389,6 +431,7 @@ export default function StudentManagement() {
                   <td style={{ padding: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button 
+                        onClick={() => setEditingStudent(s)}
                         style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #333', backgroundColor: 'transparent', color: 'white', cursor: 'pointer' }}
                         title="Edit Profile"
                       >
@@ -412,6 +455,24 @@ export default function StudentManagement() {
               No students found matching your search.
             </div>
           )}
+        </div>
+      )}
+
+      {editingStudent && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+            <div style={{ width: '100%', maxWidth: '400px', backgroundColor: '#111', border: '1px solid #333', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white' }}>Edit Student</h2>
+                <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.875rem', color: '#888', marginBottom: '0.5rem' }}>Name *</label>
+                        <input required type="text" value={editingStudent.name} onChange={e => setEditingStudent({...editingStudent, name: e.target.value})} style={{ width: '100%', backgroundColor: '#1a1a1a', border: '1px solid #333', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                        <button type="button" onClick={() => setEditingStudent(null)} style={{ backgroundColor: 'transparent', border: '1px solid #333', color: 'white', padding: '0.5rem 1.5rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 500 }}>Cancel</button>
+                        <button type="submit" style={{ backgroundColor: '#10b981', border: 'none', color: 'white', padding: '0.5rem 1.5rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 500 }}>Save</button>
+                    </div>
+                </form>
+            </div>
         </div>
       )}
     </div>
