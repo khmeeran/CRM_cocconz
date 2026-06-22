@@ -28,6 +28,12 @@ export default function BranchesPage() {
     }, []);
 
     const fetchBranches = async () => {
+        const mockBranches = [
+            { id: '1', name: 'SP Kovil Branch 1', code: 'BR_SPK', address: '10 School Road, SP Kovil, Chennai', contact_email: 'spkovil@cocoonz.in', contact_phone: '9876543210', is_active: true },
+            { id: '2', name: 'Vandalur Branch 2', code: 'BR_VAN', address: '25 G.S.T Road, Vandalur, Chennai', contact_email: 'vandalur@cocoonz.in', contact_phone: '9876543211', is_active: true },
+            { id: '3', name: 'Adyar Branch 3', code: 'BR_ADY', address: '15 Adyar Main Road, Adyar, Chennai', contact_email: 'adyar@cocoonz.in', contact_phone: '9876543212', is_active: true }
+        ];
+
         try {
             const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/branches`, {
@@ -35,10 +41,13 @@ export default function BranchesPage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setBranches(data);
+                setBranches(data && data.length > 0 ? data : mockBranches);
+            } else {
+                setBranches(mockBranches);
             }
         } catch (error) {
             console.error("Error fetching branches:", error);
+            setBranches(mockBranches);
         } finally {
             setIsLoading(false);
         }

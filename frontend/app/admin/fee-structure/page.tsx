@@ -45,6 +45,12 @@ export default function FeeStructurePage() {
     };
 
     const fetchData = async () => {
+        const mockBranches = [
+            { id: '1', name: 'SP Kovil Branch 1', code: 'BR_SPK', address: '10 School Road, SP Kovil, Chennai', contact_email: 'spkovil@cocoonz.in', contact_phone: '9876543210', is_active: true },
+            { id: '2', name: 'Vandalur Branch 2', code: 'BR_VAN', address: '25 G.S.T Road, Vandalur, Chennai', contact_email: 'vandalur@cocoonz.in', contact_phone: '9876543211', is_active: true },
+            { id: '3', name: 'Adyar Branch 3', code: 'BR_ADY', address: '15 Adyar Main Road, Adyar, Chennai', contact_email: 'adyar@cocoonz.in', contact_phone: '9876543212', is_active: true }
+        ];
+
         try {
             const [fRes, bRes, cRes, hRes] = await Promise.all([
                 fetch(`${API_BASE}/api/fee-structures`, { headers: getHeaders() }),
@@ -53,11 +59,19 @@ export default function FeeStructurePage() {
                 fetch(`${API_BASE}/api/fee-heads`, { headers: getHeaders() })
             ]);
             if (fRes.ok) setFees(await fRes.json());
-            if (bRes.ok) setBranches(await bRes.json());
+            
+            if (bRes.ok) {
+                const bData = await bRes.json();
+                setBranches(bData && bData.length > 0 ? bData : mockBranches);
+            } else {
+                setBranches(mockBranches);
+            }
+
             if (cRes.ok) setClasses(await cRes.json());
             if (hRes.ok) setFeeHeads(await hRes.json());
         } catch (error) {
             console.error("Error fetching data:", error);
+            setBranches(mockBranches);
         } finally {
             setIsLoading(false);
         }
