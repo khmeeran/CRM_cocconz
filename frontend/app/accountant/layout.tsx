@@ -28,7 +28,7 @@ export default function AccountantLayout({ children }: { children: React.ReactNo
     {
       title: 'Finance',
       items: [
-        { name: 'Fee Structure', path: '/accountant/fee-structure', icon: <Wallet size={18} /> },\n        { name: 'Collections', path: '/accountant/collections', icon: <IndianRupee size={18} /> },\n        { name: 'Receipts', path: '/accountant/receipts', icon: <ReceiptText size={18} /> },\n        { name: 'Dues', path: '/accountant/dues', icon: <AlertCircle size={18} /> }
+        { name: 'Fee Structure', path: '/accountant/fee-structure', icon: <Wallet size={18} /> },        { name: 'Collections', path: '/accountant/collections', icon: <IndianRupee size={18} /> },        { name: 'Receipts', path: '/accountant/receipts', icon: <ReceiptText size={18} /> },        { name: 'Dues', path: '/accountant/dues', icon: <AlertCircle size={18} /> }
       ]
     },
     {

@@ -28,13 +28,13 @@ export default function BranchAdminLayout({ children }: { children: React.ReactN
     {
       title: 'Organization',
       items: [
-        { name: 'Branches', path: '/branch-admin/branches', icon: <Building2 size={18} /> },\n        { name: 'Classes', path: '/branch-admin/classes', icon: <GraduationCap size={18} /> }
+        { name: 'Branches', path: '/branch-admin/branches', icon: <Building2 size={18} /> },        { name: 'Classes', path: '/branch-admin/classes', icon: <GraduationCap size={18} /> }
       ]
     },
     {
       title: 'Academic',
       items: [
-        { name: 'Admissions', path: '/branch-admin/admissions', icon: <UserPlus size={18} /> },\n        { name: 'Students', path: '/branch-admin/students', icon: <Users size={18} /> }
+        { name: 'Admissions', path: '/branch-admin/admissions', icon: <UserPlus size={18} /> },        { name: 'Students', path: '/branch-admin/students', icon: <Users size={18} /> }
       ]
     },
     {

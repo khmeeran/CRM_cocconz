@@ -36,8 +36,8 @@ export default function BaseLayout({ children, navGroups, basePath, roleName }: 
     router.push('/login');
   };
 
-  const allRoutes = navGroups.flatMap(g => g.items);
-  const filteredRoutes = allRoutes.filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const allRoutes = navGroups.flatMap((g: any) => g.items);
+  const filteredRoutes = allRoutes.filter((r: any) => r.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#0A1128', color: 'white', overflow: 'hidden', fontFamily: 'Inter, sans-serif' }}>
@@ -83,7 +83,7 @@ export default function BaseLayout({ children, navGroups, basePath, roleName }: 
                 {group.title}
               </h4>
               <ul style={{ listStyle: 'none', padding: '0 0.75rem', margin: 0 }}>
-                {group.items.map(item => {
+                {group.items.map((item: any) => {
                   const isActive = pathname === item.path;
                   return (
                     <li key={item.path} style={{ marginBottom: '0.25rem' }}>
@@ -188,7 +188,7 @@ export default function BaseLayout({ children, navGroups, basePath, roleName }: 
               {filteredRoutes.length === 0 ? (
                 <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No results found</div>
               ) : (
-                filteredRoutes.map((route) => (
+                filteredRoutes.map((route: any) => (
                   <button
                     key={route.path}
                     onClick={() => {
