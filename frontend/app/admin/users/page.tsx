@@ -18,15 +18,12 @@ export default function usersPage() {
                 <h1 style={{ fontSize: '1.875rem', fontWeight: 800 }}>Users</h1>
                 
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <button style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                        <Filter size={16} /> Filter
-                    </button>
-                    <button style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                        <Download size={16} /> Export
-                    </button>
-                    <button style={{ backgroundColor: '#0066FF', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 14px 0 rgba(0,102,255,0.39)' }}>
-                        <Plus size={18} /> New Entry
-                    </button>
+                    <button disabled style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'not-allowed', opacity: 0.5 }}>
+                        <Filter size={16} /> Filter (Soon)</button>
+                    <button disabled style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'not-allowed', opacity: 0.5 }}>
+                        <Download size={16} /> Export (Soon)</button>
+                    <button disabled style={{ backgroundColor: '#0066FF', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'not-allowed', opacity: 0.5, boxShadow: '0 4px 14px 0 rgba(0,102,255,0.39)' }}>
+                        <Plus size={18} /> New Entry (Soon)</button>
                 </div>
             </div>
 
