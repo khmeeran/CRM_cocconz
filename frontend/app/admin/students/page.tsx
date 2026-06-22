@@ -21,29 +21,6 @@ interface ApiClass {
   name: string;
   section: string;
   division: string;
-'use client';
-
-import { useEffect, useState } from 'react';
-import { API_BASE } from '../../../lib/api';
-
-interface Student {
-  id: string;
-  name: string;
-  roll_no: string;
-  class_name: string;
-  section: string;
-  parent_name: string;
-  parent_phone: string;
-  address: string;
-  total_fees: number;
-  status: string;
-}
-
-interface ApiClass {
-  id: string;
-  name: string;
-  section: string;
-  division: string;
 }
 
 export default function StudentManagement() {
