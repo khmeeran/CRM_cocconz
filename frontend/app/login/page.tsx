@@ -43,8 +43,8 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="mesh-bg min-h-screen flex items-center justify-center p-6">
-            <div className="w-full max-w-md">
+        <div className="mesh-bg" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+            <div style={{ width: '100%', maxWidth: '560px' }}>
                 {/* Brand */}
                 <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
                     <div style={{ 
