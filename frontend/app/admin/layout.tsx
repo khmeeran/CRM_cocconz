@@ -80,12 +80,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       items: [
         { name: 'Reports', path: '/admin/reports', icon: <PieChart size={18} /> }
       ]
-    },
-    {
-      title: 'System',
-      items: [
-        { name: 'Settings', path: '/admin/settings', icon: <Settings size={18} /> }
-      ]
     }
   ];
 
