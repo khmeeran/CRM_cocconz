@@ -1,0 +1,271 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.6, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\khmee\AppData\Local\Programs\Python\Python310\python.exe
+cachedir: .pytest_cache
+rootdir: E:\CRM_Cocoonz\backend
+plugins: anyio-4.13.0, Faker-40.11.0, asyncio-0.23.3, cov-4.1.0, respx-0.22.0, typeguard-4.4.4
+asyncio: mode=strict
+collecting ... collected 30 items
+
+test_fee_crm.py::test_login_validation_missing_username PASSED           [  3%]
+test_fee_crm.py::test_login_validation_missing_password PASSED           [  6%]
+test_fee_crm.py::test_login_invalid_credentials PASSED                   [ 10%]
+test_fee_crm.py::test_login_success PASSED                               [ 13%]
+test_fee_crm.py::test_create_branch_validation PASSED                    [ 16%]
+test_fee_crm.py::test_create_branch_success PASSED                       [ 20%]
+test_fee_crm.py::test_get_branches PASSED                                [ 23%]
+test_fee_crm.py::test_deactivate_branch PASSED                           [ 26%]
+test_fee_crm.py::test_activate_branch PASSED                             [ 30%]
+test_fee_crm.py::test_create_class FAILED                                [ 33%]
+test_fee_crm.py::test_create_duplicate_class FAILED                      [ 36%]
+test_fee_crm.py::test_get_classes FAILED                                 [ 40%]
+test_fee_crm.py::test_create_enquiry_invalid PASSED                      [ 43%]
+test_fee_crm.py::test_create_enquiry_success PASSED                      [ 46%]
+test_fee_crm.py::test_promote_to_registered FAILED                       [ 50%]
+test_fee_crm.py::test_promote_to_admitted_validation_error PASSED        [ 53%]
+test_fee_crm.py::test_promote_to_admitted_success FAILED                 [ 56%]
+test_fee_crm.py::test_create_fee_structures FAILED                       [ 60%]
+test_fee_crm.py::test_assign_student_fees_and_discount FAILED            [ 63%]
+test_fee_crm.py::test_get_outstanding_dues FAILED                        [ 66%]
+test_fee_crm.py::test_collect_payment_validation_overpay FAILED          [ 70%]
+test_fee_crm.py::test_collect_partial_payment_success FAILED             [ 73%]
+test_fee_crm.py::test_get_receipt_details FAILED                         [ 76%]
+test_fee_crm.py::test_dashboard_stats FAILED                             [ 80%]
+test_fee_crm.py::test_reports_generation_json PASSED                     [ 83%]
+test_fee_crm.py::test_reports_generation_pdf PASSED                      [ 86%]
+test_fee_crm.py::test_notifications_send PASSED                          [ 90%]
+test_fee_crm.py::test_audit_logs_exist PASSED                            [ 93%]
+test_fee_crm.py::test_create_user_valid_role PASSED                      [ 96%]
+test_fee_crm.py::test_create_user_invalid_role PASSED                    [100%]
+
+================================== FAILURES ===================================
+______________________________ test_create_class ______________________________
+test_fee_crm.py:141: in test_create_class
+    assert res.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,325", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: POST http://testserver/api/classes \"HTTP/1.1 400 Bad Request\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/api/classes "HTTP/1.1 400 Bad Request"
+_________________________ test_create_duplicate_class _________________________
+test_fee_crm.py:156: in test_create_duplicate_class
+    assert "Class already exists" in res.json()["detail"]
+E   assert 'Class already exists' in "Class name 'LKG' is not in the whitelist under FIXED mode. Valid classes: ['Playgroup', 'Readiness', 'Pre KG', 'Junior KG', 'Senior KG', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5']"
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,560", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: POST http://testserver/api/classes \"HTTP/1.1 400 Bad Request\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/api/classes "HTTP/1.1 400 Bad Request"
+______________________________ test_get_classes _______________________________
+test_fee_crm.py:162: in test_get_classes
+    assert len(classes) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,575", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: GET http://testserver/api/classes?branch_id=265b7316-905d-4978-a702-b3c3cc206b49 \"HTTP/1.1 200 OK\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/api/classes?branch_id=265b7316-905d-4978-a702-b3c3cc206b49 "HTTP/1.1 200 OK"
+_________________________ test_promote_to_registered __________________________
+test_fee_crm.py:202: in test_promote_to_registered
+    assert res.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,606", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: POST http://testserver/api/admissions/aff3acba-55f7-404a-a302-36c24c47d7aa/register \"HTTP/1.1 400 Bad Request\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/api/admissions/aff3acba-55f7-404a-a302-36c24c47d7aa/register "HTTP/1.1 400 Bad Request"
+______________________ test_promote_to_admitted_success _______________________
+test_fee_crm.py:216: in test_promote_to_admitted_success
+    assert res.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,703", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: POST http://testserver/api/admissions/aff3acba-55f7-404a-a302-36c24c47d7aa/admit \"HTTP/1.1 400 Bad Request\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/api/admissions/aff3acba-55f7-404a-a302-36c24c47d7aa/admit "HTTP/1.1 400 Bad Request"
+_________________________ test_create_fee_structures __________________________
+test_fee_crm.py:247: in test_create_fee_structures
+    assert res1.status_code == 200
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,715", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: GET http://testserver/api/fee-heads \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-06-19 12:57:45,719", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: POST http://testserver/api/fee-structures \"HTTP/1.1 422 Unprocessable Entity\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/api/fee-heads "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/api/fee-structures "HTTP/1.1 422 Unprocessable Entity"
+____________________ test_assign_student_fees_and_discount ____________________
+test_fee_crm.py:253: in test_assign_student_fees_and_discount
+    assert res.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,732", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: POST http://testserver/api/students/aff3acba-55f7-404a-a302-36c24c47d7aa/assign-fee \"HTTP/1.1 400 Bad Request\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/api/students/aff3acba-55f7-404a-a302-36c24c47d7aa/assign-fee "HTTP/1.1 400 Bad Request"
+__________________________ test_get_outstanding_dues __________________________
+test_fee_crm.py:266: in test_get_outstanding_dues
+    assert len(dues) == 2
+E   assert 0 == 2
+E    +  where 0 = len([])
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,744", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: GET http://testserver/api/dues?student_id=aff3acba-55f7-404a-a302-36c24c47d7aa \"HTTP/1.1 200 OK\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/api/dues?student_id=aff3acba-55f7-404a-a302-36c24c47d7aa "HTTP/1.1 200 OK"
+___________________ test_collect_payment_validation_overpay ___________________
+test_fee_crm.py:288: in test_collect_payment_validation_overpay
+    assert res.status_code == 400
+E   assert 422 == 400
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,757", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: POST http://testserver/api/collections \"HTTP/1.1 422 Unprocessable Entity\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/api/collections "HTTP/1.1 422 Unprocessable Entity"
+____________________ test_collect_partial_payment_success _____________________
+test_fee_crm.py:304: in test_collect_partial_payment_success
+    assert res.status_code == 200
+E   assert 422 == 200
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,769", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: POST http://testserver/api/collections \"HTTP/1.1 422 Unprocessable Entity\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/api/collections "HTTP/1.1 422 Unprocessable Entity"
+__________________________ test_get_receipt_details ___________________________
+test_fee_crm.py:312: in test_get_receipt_details
+    assert res.status_code == 200
+E   assert 404 == 200
+E    +  where 404 = <Response [404 Not Found]>.status_code
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,782", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: GET http://testserver/api/receipts/None \"HTTP/1.1 404 Not Found\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/api/receipts/None "HTTP/1.1 404 Not Found"
+____________________________ test_dashboard_stats _____________________________
+test_fee_crm.py:322: in test_dashboard_stats
+    assert float(data["todays_collection"]) == 10000.00
+E   AssertionError: assert 0.0 == 10000.0
+E    +  where 0.0 = float('0.0')
+---------------------------- Captured stderr call -----------------------------
+{"asctime": "2026-06-19 12:57:45,804", "levelname": "INFO", "name": "httpx", "correlation_id": null, "message": "HTTP Request: GET http://testserver/api/dashboard/stats \"HTTP/1.1 200 OK\""}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/api/dashboard/stats "HTTP/1.1 200 OK"
+============================== warnings summary ===============================
+C:\Users\khmee\AppData\Local\Programs\Python\Python310\lib\site-packages\fastapi\testclient.py:1
+  C:\Users\khmee\AppData\Local\Programs\Python\Python310\lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+models.py:15
+  E:\CRM_Cocoonz\backend\models.py:15: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base(metadata=metadata)
+
+schemas.py:14
+  E:\CRM_Cocoonz\backend\schemas.py:14: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Role(RoleBase):
+
+schemas.py:30
+  E:\CRM_Cocoonz\backend\schemas.py:30: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Branch(BranchBase):
+
+schemas.py:56
+  E:\CRM_Cocoonz\backend\schemas.py:56: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class User(UserBase):
+
+schemas.py:72
+  E:\CRM_Cocoonz\backend\schemas.py:72: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Class(ClassBase):
+
+schemas.py:92
+  E:\CRM_Cocoonz\backend\schemas.py:92: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Parent(ParentBase):
+
+schemas.py:129
+  E:\CRM_Cocoonz\backend\schemas.py:129: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Student(StudentBase):
+
+schemas.py:144
+  E:\CRM_Cocoonz\backend\schemas.py:144: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class FeeHead(FeeHeadBase):
+
+schemas.py:160
+  E:\CRM_Cocoonz\backend\schemas.py:160: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class FeeStructure(FeeStructureBase):
+
+schemas.py:179
+  E:\CRM_Cocoonz\backend\schemas.py:179: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class StudentFeeDue(StudentFeeDueBase):
+
+schemas.py:191
+  E:\CRM_Cocoonz\backend\schemas.py:191: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class StudentFeeMapping(StudentFeeMappingBase):
+
+schemas.py:216
+  E:\CRM_Cocoonz\backend\schemas.py:216: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Collection(BaseModel):
+
+schemas.py:246
+  E:\CRM_Cocoonz\backend\schemas.py:246: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Receipt(BaseModel):
+
+schemas.py:268
+  E:\CRM_Cocoonz\backend\schemas.py:268: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class AuditLog(AuditLogBase):
+
+schemas.py:283
+  E:\CRM_Cocoonz\backend\schemas.py:283: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class NotificationLog(BaseModel):
+
+C:\Users\khmee\AppData\Local\Programs\Python\Python310\lib\site-packages\fpdf\__init__.py:41
+  C:\Users\khmee\AppData\Local\Programs\Python\Python310\lib\site-packages\fpdf\__init__.py:41: UserWarning: You have both PyFPDF & fpdf2 installed. Both packages cannot be installed at the same time as they share the same module namespace. To only keep fpdf2, run: pip uninstall --yes pypdf && pip install --upgrade fpdf2
+    warnings.warn(
+
+C:\Users\khmee\AppData\Local\Programs\Python\Python310\lib\site-packages\pythonjsonlogger\jsonlogger.py:11
+  C:\Users\khmee\AppData\Local\Programs\Python\Python310\lib\site-packages\pythonjsonlogger\jsonlogger.py:11: DeprecationWarning: pythonjsonlogger.jsonlogger has been moved to pythonjsonlogger.json
+    warnings.warn(
+
+main.py:227
+  E:\CRM_Cocoonz\backend\main.py:227: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+C:\Users\khmee\AppData\Local\Programs\Python\Python310\lib\site-packages\fastapi\applications.py:4598
+  C:\Users\khmee\AppData\Local\Programs\Python\Python310\lib\site-packages\fastapi\applications.py:4598: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+test_fee_crm.py::test_create_branch_success
+  E:\CRM_Cocoonz\backend\main.py:469: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    db_branch = models.Branch(**branch.dict())
+
+test_fee_crm.py::test_reports_generation_pdf
+  E:\CRM_Cocoonz\backend\services.py:141: DeprecationWarning: Substituting font arial by core font helvetica - This is deprecated since v2.7.8, and will soon be removed
+    pdf.set_font("Arial", 'B', 14)
+
+test_fee_crm.py::test_reports_generation_pdf
+  E:\CRM_Cocoonz\backend\services.py:142: DeprecationWarning: The parameter "txt" has been renamed to "text" in 2.7.6
+    pdf.cell(190, 10, txt=title, ln=True, align='C')
+
+test_fee_crm.py::test_reports_generation_pdf
+  E:\CRM_Cocoonz\backend\services.py:142: DeprecationWarning: The parameter "ln" is deprecated since v2.5.2. Instead of ln=True use new_x=XPos.LMARGIN, new_y=YPos.NEXT.
+    pdf.cell(190, 10, txt=title, ln=True, align='C')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED test_fee_crm.py::test_create_class - assert 400 == 200
+FAILED test_fee_crm.py::test_create_duplicate_class - assert 'Class already e...
+FAILED test_fee_crm.py::test_get_classes - assert 0 >= 1
+FAILED test_fee_crm.py::test_promote_to_registered - assert 400 == 200
+FAILED test_fee_crm.py::test_promote_to_admitted_success - assert 400 == 200
+FAILED test_fee_crm.py::test_create_fee_structures - assert 422 == 200
+FAILED test_fee_crm.py::test_assign_student_fees_and_discount - assert 400 ==...
+FAILED test_fee_crm.py::test_get_outstanding_dues - assert 0 == 2
+FAILED test_fee_crm.py::test_collect_payment_validation_overpay - assert 422 ...
+FAILED test_fee_crm.py::test_collect_partial_payment_success - assert 422 == 200
+FAILED test_fee_crm.py::test_get_receipt_details - assert 404 == 200
+FAILED test_fee_crm.py::test_dashboard_stats - AssertionError: assert 0.0 == ...
+================= 12 failed, 18 passed, 24 warnings in 1.88s ==================

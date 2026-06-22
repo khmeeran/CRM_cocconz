@@ -30,7 +30,11 @@ export default function LoginPage() {
                 const data = await response.json();
                 localStorage.setItem('user_role', data.role);
                 localStorage.setItem('access_token', data.access_token);
-                router.push('/admin');
+                if (data.role === 'ADMIN') router.push('/super-admin');
+                else if (data.role === 'OFFICE') router.push('/branch-admin');
+                else if (data.role === 'ACCOUNTANT') router.push('/accountant');
+                else if (data.role === 'TEACHER') router.push('/teacher');
+                else router.push('/login');
             } else {
                 setError(true);
             }
