@@ -110,6 +110,31 @@ export default function BranchesPage() {
         setIsModalOpen(true);
     };
 
+    const handleExport = () => {
+        if (branches.length === 0) return;
+        
+        const headers = ['Branch Name', 'Code', 'Email', 'Phone', 'Status'];
+        const csvContent = [
+            headers.join(','),
+            ...branches.map(b => [
+                `"${b.name || ''}"`,
+                `"${b.code || ''}"`,
+                `"${b.contact_email || ''}"`,
+                `"${b.contact_phone || ''}"`,
+                `"${b.is_active ? 'Active' : 'Inactive'}"`
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'branches.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
             
@@ -125,10 +150,10 @@ export default function BranchesPage() {
                 <h1 style={{ fontSize: '1.875rem', fontWeight: 800 }}>Branches</h1>
                 
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <button style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                        <Filter size={16} /> Filter
+                    <button disabled style={{ opacity: 0.5, cursor: 'not-allowed', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Filter size={16} /> Filter (Soon)
                     </button>
-                    <button style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <button onClick={handleExport} style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                         <Download size={16} /> Export
                     </button>
                     <button onClick={openAddModal} style={{ backgroundColor: '#0066FF', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 14px 0 rgba(0,102,255,0.39)' }}>
