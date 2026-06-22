@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { IndianRupee, Users, ArrowUpRight, ArrowDownRight, Clock, MapPin, TrendingUp, CheckCircle, Plus, AlertCircle } from 'lucide-react';
 
 export default function AdminDashboard() {
+    const router = useRouter();
     const [dateString, setDateString] = useState('');
 
     useEffect(() => {
@@ -43,7 +45,7 @@ export default function AdminDashboard() {
                             <option value="north">North Campus</option>
                         </select>
                     </div>
-                    <button onClick={() => window.location.href = '/admin/admissions'} style={{ backgroundColor: '#0066FF', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 14px 0 rgba(0,102,255,0.39)' }}>
+                    <button type="button" onClick={() => router.push('/admin/admissions')} style={{ backgroundColor: '#0066FF', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 14px 0 rgba(0,102,255,0.39)' }}>
                         <Plus size={18} /> New Admission
                     </button>
                 </div>
