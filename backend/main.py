@@ -328,7 +328,7 @@ async def login_for_access_token(request: Request, response: Response, form_data
         path="/"
     )
     
-    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
+    return {"status": "success", "role": user.role}
 
 @app.post("/api/logout")
 def logout(response: Response):
