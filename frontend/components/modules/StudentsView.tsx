@@ -131,7 +131,6 @@ export default function StudentManagement() {
     try {
       const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || '';
       const res = await fetch(`${API_BASE}/api/students`, {
-      credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
