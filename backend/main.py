@@ -127,6 +127,7 @@ def debug_version():
     }
 
 @app.get("/health")
+@app.get("/healthz")
 def health_check(db: Session = Depends(get_db)):
     from sqlalchemy import text
     try:
@@ -1901,22 +1902,10 @@ def get_student_dues(student_id: str, db: Session = Depends(get_db), current_use
         res.append(get_due_object(a, s, fh))
     return res
 
-# Serve Next.js frontend pages and handle fallbacks
+# Pure API fallback
+@app.get("/")
 @app.get("/{path:path}")
-def serve_frontend(path: str):
-    clean_path = path.strip("/")
-    
-    # Check if a directory with index.html exists
-    dir_index = os.path.join("../frontend/out", clean_path, "index.html")
-    if os.path.exists(dir_index):
-        return FileResponse(dir_index)
-        
-    # Check if a direct file exists
-    file_path = os.path.join("../frontend/out", clean_path)
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        return FileResponse(file_path)
-        
-    # Fallback to login index page
-    return FileResponse("../frontend/out/login/index.html")
+def serve_frontend(path: str = ""):
+    return {"message": "Cocoonz CRM API is running."}
 
 
