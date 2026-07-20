@@ -3,6 +3,8 @@ import uuid
 import datetime
 import os
 import glob
+import sys
+sys.path.append('backend')
 from database import SessionLocal
 from models import Branch, Class, Student, Parent, Staff, User
 from passlib.context import CryptContext
@@ -66,7 +68,7 @@ def run_import():
     # STAFF
     print("Importing Staff...")
     try:
-        wb_staff = openpyxl.load_workbook('/app/STAFF DATA.xlsx', read_only=True, data_only=True)
+        wb_staff = openpyxl.load_workbook('./STAFF DATA.xlsx', read_only=True, data_only=True)
         sheet = wb_staff['Sheet1']
         for row in sheet.iter_rows(min_row=4, values_only=True):
             if not row[1]: continue
@@ -97,7 +99,7 @@ def run_import():
     student_cache = set()
     parent_cache = {}
     
-    student_files = [f for f in glob.glob('/app/*.xlsx') if 'STAFF' not in f and 'CHECKLIST' not in f]
+    student_files = [f for f in glob.glob('./*.xlsx') if 'STAFF' not in f and 'CHECKLIST' not in f]
 
     expected_counts = {
         'SP KOIL': {'PRE KG': 36, 'JR KG': 54, 'SR KG': 34, 'Grade 1': 20},
