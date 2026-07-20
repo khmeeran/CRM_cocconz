@@ -182,7 +182,7 @@ class PaymentCreate(BaseModel):
     student_id: str
     assignment_id: str
     fee_head_id: str
-    amount: Decimal
+    amount: Decimal = Field(..., gt=0, description="Amount must be strictly positive")
     payment_mode: str # 'CASH', 'UPI', 'BANK'
     receipt_no: Optional[str] = None
 

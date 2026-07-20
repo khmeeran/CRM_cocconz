@@ -230,8 +230,10 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-# Serve Next.js Frontend Assets
-app.mount("/_next", StaticFiles(directory="../frontend/out/_next"), name="next_static")
+# Serve Next.js Frontend Assets (Fallback for unified deployment)
+import os
+if os.path.exists("../frontend/out/_next"):
+    app.mount("/_next", StaticFiles(directory="../frontend/out/_next"), name="next_static")
 
 # CORS Config
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://cocoonz-school.vercel.app").split(",")
@@ -854,6 +856,9 @@ def pay_fee(payment: schemas.PaymentCreate, db: Session = Depends(get_db), curre
     
     if not fee_summary:
         raise HTTPException(status_code=404, detail="Fee summary not found for student")
+        
+    if payment.amount > fee_summary.pending_balance:
+        raise HTTPException(status_code=400, detail="Payment amount exceeds the pending balance")
 
     import uuid
     from datetime import datetime
@@ -899,9 +904,14 @@ def download_receipt_pdf(receipt_no: str, db: Session = Depends(get_db), current
         receipt_no=payment.receipt_no,
         student_name=student.name,
         roll_no=student.roll_no,
+        branch="Cocoonz Main",
+        class_name="N/A",
+        fee_head="General Fee",
         amount=float(payment.amount),
+        balance=float(payment.balance_due),
         date=payment.payment_date.strftime("%Y-%m-%d"),
-        payment_mode=payment.payment_mode
+        payment_mode=payment.payment_mode,
+        collected_by=current_user.username
     )
     from fastapi.responses import Response
     return Response(content=bytes(pdf_bytes), media_type='application/pdf')
