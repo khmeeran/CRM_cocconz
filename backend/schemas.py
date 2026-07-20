@@ -43,6 +43,12 @@ class Branch(BranchBase):
 
 class FeeHeadBase(BaseModel):
     name: str
+    description: Optional[str] = None
+    is_active: bool = True
+    is_discountable: bool = False
+
+class FeeHeadCreate(FeeHeadBase):
+    pass
 
 class FeeHead(FeeHeadBase):
     id: str
@@ -209,6 +215,9 @@ class StaffBase(BaseModel):
     name: str
     role: str
     phone: str
+    email: Optional[str] = None
+    qualification: Optional[str] = None
+    address: Optional[str] = None
     monthly_salary: Decimal
 
 class StaffCreate(StaffBase):
@@ -227,6 +236,9 @@ class StaffAttendanceCreate(BaseModel):
 class SalaryPaymentCreate(BaseModel):
     staff_id: str
     amount_paid: Decimal
+    bonus: Optional[Decimal] = 0.0
+    advance: Optional[Decimal] = 0.0
+    deductions: Optional[Decimal] = 0.0
     for_month: str
     for_year: str
 

@@ -21,6 +21,9 @@ class FeeHead(Base):
     __tablename__ = "fee_heads"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, unique=True, nullable=False)
+    description = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    is_discountable = Column(Boolean, default=False)
 
 class FeeStructure(Base):
     __tablename__ = "fee_structures"
@@ -39,6 +42,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     password_hash = Column(String)
     role = Column(String)  # 'ADMIN', 'TEACHER'
+    branch_id = Column(String, ForeignKey("branches.id"), nullable=True)
 
 class Class(Base):
     __tablename__ = "classes"
@@ -58,6 +62,7 @@ class Parent(Base):
     mother_name = Column(String, nullable=True)
     primary_phone = Column(String, unique=True, index=True)
     secondary_phone = Column(String, nullable=True)
+    branch_id = Column(String, ForeignKey("branches.id"), nullable=True)
     address = Column(String, nullable=True)
     
     students = relationship("Student", back_populates="parent")
@@ -72,6 +77,7 @@ class Student(Base):
     dob = Column(Date, nullable=True)
     blood_group = Column(String, nullable=True)
     status = Column(String, default="ACTIVE")
+    branch_id = Column(String, ForeignKey("branches.id"), nullable=True)
     payment_preference = Column(String, default="Term Wise") # 'Full Fee' or 'Term Wise'
     
     parent = relationship("Parent", back_populates="students")
@@ -128,6 +134,7 @@ class PaymentHistory(Base):
     balance_due = Column(Numeric(10, 2), default=0.00, nullable=False)
     receipt_status = Column(String, default='ACTIVE', nullable=False, index=True)
     remarks = Column(String, nullable=True)
+    branch_id = Column(String, ForeignKey("branches.id"), nullable=True)
     
     student = relationship("Student", back_populates="payments")
 
@@ -138,15 +145,20 @@ class Broadcast(Base):
     message = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
     status = Column(String, default="SENT")
+    branch_id = Column(String, ForeignKey("branches.id"), nullable=True)
 
 class Staff(Base):
     __tablename__ = "staff"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String)
-    role = Column(String)  # 'TEACHER', 'OFFICE', 'DRIVER', etc.
+    role = Column(String)  # 'TEACHER', 'OFFICE', 'DRIVER', etc. (Designation)
     phone = Column(String)
+    email = Column(String, nullable=True)
+    qualification = Column(String, nullable=True)
+    address = Column(String, nullable=True)
     monthly_salary = Column(Numeric(10, 2))
     joining_date = Column(Date, default=datetime.utcnow().date())
+    branch_id = Column(String, ForeignKey("branches.id"), nullable=True)
 
     attendance = relationship("StaffAttendance", back_populates="staff_member")
     payments = relationship("SalaryPayment", back_populates="staff_member")
@@ -165,7 +177,10 @@ class SalaryPayment(Base):
     __tablename__ = "salary_payments"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     staff_id = Column(String, ForeignKey("staff.id"))
-    amount_paid = Column(Numeric(10, 2))
+    amount_paid = Column(Numeric(10, 2)) # Represents the final salary (basic)
+    bonus = Column(Numeric(10, 2), default=0.0)
+    advance = Column(Numeric(10, 2), default=0.0)
+    deductions = Column(Numeric(10, 2), default=0.0)
     payment_date = Column(Date, default=datetime.utcnow().date())
     for_month = Column(String) # 'January', 'February', etc.
     for_year = Column(String)
@@ -182,6 +197,7 @@ class GeneralLedger(Base):
     date = Column(Date, default=datetime.utcnow().date())
     reference_id = Column(String, nullable=True)
     bill_image_url = Column(String, nullable=True) # Photo proof for petty cash
+    branch_id = Column(String, ForeignKey("branches.id"), nullable=True)
 
 class TimeTable(Base):
     __tablename__ = "time_table"

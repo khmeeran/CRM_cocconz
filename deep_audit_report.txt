@@ -1,0 +1,40 @@
+TOTAL FILES SCANNED: 762
+TOTAL LINES OF CODE SCANNED: 16303
+TIME SPENT: 2.71 seconds
+FILES SKIPPED: 0
+
+INVENTORY:
+  - Python: 124
+  - TypeScript: 52
+  - React: 49
+  - SQLAlchemy: 2
+  - Alembic: 9
+  - Docker: 3
+  - Nginx: 1
+  - Tests: 35
+  - Excel: 0
+  - Utilities: 0
+  - Scripts: 0
+  - Total: 762
+
+PYTHON FILES SAMPLE DETAILS (Top 20 by lines):
+  - main.py: 1785 lines, 0 TODOs, 1 classes, 83 funcs, 63 imports
+  - main.py: 1783 lines, 0 TODOs, 1 classes, 83 funcs, 62 imports
+  - migrate_rbac.py: 408 lines, 0 TODOs, 0 classes, 1 funcs, 3 imports
+  - test_fee_crm.py: 379 lines, 0 TODOs, 0 classes, 31 funcs, 9 imports
+  - test_fee_crm.py: 379 lines, 0 TODOs, 0 classes, 31 funcs, 9 imports
+  - schemas.py: 288 lines, 0 TODOs, 65 classes, 0 funcs, 4 imports
+  - schemas.py: 288 lines, 0 TODOs, 65 classes, 0 funcs, 4 imports
+  - d7a7a3e3793e_init.py: 267 lines, 0 TODOs, 0 classes, 2 funcs, 3 imports
+  - generate_evidence_audit_2.py: 219 lines, 0 TODOs, 0 classes, 2 funcs, 4 imports
+  - models.py: 210 lines, 0 TODOs, 19 classes, 0 funcs, 6 imports
+  - models.py: 210 lines, 0 TODOs, 19 classes, 0 funcs, 6 imports
+  - generate_evidence_audit.py: 194 lines, 0 TODOs, 0 classes, 2 funcs, 4 imports
+  - setup_dev.py: 162 lines, 0 TODOs, 0 classes, 1 funcs, 5 imports
+  - run_validation.py: 161 lines, 0 TODOs, 0 classes, 3 funcs, 16 imports
+  - run_validation.py: 161 lines, 0 TODOs, 0 classes, 3 funcs, 16 imports
+  - 81ba6d1355e0_initial_schema.py: 136 lines, 0 TODOs, 0 classes, 2 funcs, 3 imports
+  - services.py: 131 lines, 0 TODOs, 2 classes, 7 funcs, 6 imports
+  - services.py: 131 lines, 0 TODOs, 2 classes, 7 funcs, 6 imports
+  - generate_audit.py: 123 lines, 0 TODOs, 0 classes, 1 funcs, 3 imports
+  - generate_deep_audit.py: 120 lines, 2 TODOs, 0 classes, 1 funcs, 4 imports

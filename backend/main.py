@@ -619,15 +619,54 @@ def get_students(class_id: str = None, skip: int = 0, limit: int = 100, db: Sess
 
 @app.get("/api/fee-heads", response_model=List[schemas.FeeHead])
 def get_fee_heads(db: Session = Depends(get_db)):
-    return db.query(models.FeeHead).all()
+    return db.query(models.FeeHead).filter(models.FeeHead.is_active == True).all()
+
+@app.post("/api/fee-heads", response_model=schemas.FeeHead)
+def create_fee_head(head_data: schemas.FeeHeadCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    if db.query(models.FeeHead).filter(models.FeeHead.name == head_data.name).first():
+        raise HTTPException(status_code=400, detail="Fee Head already exists")
+    import uuid
+    db_head = models.FeeHead(id=str(uuid.uuid4()), **head_data.dict())
+    db.add(db_head)
+    db.commit()
+    db.refresh(db_head)
+    return db_head
+
+@app.put("/api/fee-heads/{head_id}", response_model=schemas.FeeHead)
+def update_fee_head(head_id: str, head_data: schemas.FeeHeadCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN"])
+    db_head = db.query(models.FeeHead).filter(models.FeeHead.id == head_id).first()
+    if not db_head:
+        raise HTTPException(status_code=404, detail="Fee Head not found")
+    for key, value in head_data.dict().items():
+        setattr(db_head, key, value)
+    db.commit()
+    db.refresh(db_head)
+    return db_head
 
 @app.post("/api/seed-fee-heads")
 def seed_fee_heads(db: Session = Depends(get_db)):
-    heads = ["Admission Fee", "Tuition Fee", "Book Fee", "Skill Development Charges", "After School Activities Fee", "Daycare Fee"]
+    heads = [
+        {"name": "Admission Fee", "desc": "One-time fee at admission", "discountable": False},
+        {"name": "Tuition Fee", "desc": "Recurring fee for education", "discountable": True},
+        {"name": "Book Fee", "desc": "Fee for academic books", "discountable": False},
+        {"name": "Uniform Fee", "desc": "Fee for school uniform", "discountable": False}
+    ]
     import uuid
     for h in heads:
-        if not db.query(models.FeeHead).filter(models.FeeHead.name == h).first():
-            db.add(models.FeeHead(id=str(uuid.uuid4()), name=h))
+        db_head = db.query(models.FeeHead).filter(models.FeeHead.name == h["name"]).first()
+        if not db_head:
+            db_head = models.FeeHead(id=str(uuid.uuid4()), name=h["name"], description=h["desc"], is_discountable=h["discountable"])
+            db.add(db_head)
+        else:
+            db_head.is_discountable = h["discountable"]
+            db_head.description = h["desc"]
+    
+    # Deactivate the old unused ones
+    obsolete = ["Skill Development Charges", "After School Activities Fee", "Daycare Fee"]
+    db.query(models.FeeHead).filter(models.FeeHead.name.in_(obsolete)).update({"is_active": False})
+    
     db.commit()
     return {"status": "seeded"}
 
@@ -812,8 +851,8 @@ def update_admission(student_id: str, adm_data: schemas.AdmissionUpdate, db: Ses
                 
                 # If Term Wise preference but Fee is Full Fee mapped (i.e. term=None), we assign it. 
                 # If Full Fee preference but Fee is Term Wise mapped, we assign it.
-                # Here we just blindly assign all structures for the class, BUT apply discount if Full Fee and Tuition Fee.
-                is_tuition = (head.name == "Tuition Fee")
+                # Here we just blindly assign all structures for the class, BUT apply discount if Full Fee and is_discountable.
+                is_tuition = head.is_discountable
                 discount_pct = 5.0 if (payment_pref == "Full Fee" and is_tuition) else 0.0
                 discount_amt = float(fs.amount) * (discount_pct / 100.0)
                 final_amt = float(fs.amount) - discount_amt
@@ -1138,6 +1177,71 @@ def get_students_report(export: str = None, db: Session = Depends(get_db), curre
         
     return {"summary": summary, "data": report_data}
 
+@app.get("/api/reports/class-wise")
+def get_class_wise_report(export: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "OFFICE", "ACCOUNTANT"])
+    classes = db.query(models.Class).all()
+    report_data = []
+    
+    for cls in classes:
+        students = db.query(models.Student).filter(models.Student.class_id == cls.id).all()
+        total_students = len(students)
+        student_ids = [s.id for s in students]
+        
+        assignments = db.query(models.StudentFeeAssignment).filter(models.StudentFeeAssignment.student_id.in_(student_ids)).all()
+        total_fees = sum(float(a.final_amount) for a in assignments)
+        collected = sum(float(a.amount_paid or 0) for a in assignments)
+        outstanding = total_fees - collected
+        
+        report_data.append({
+            "Class": cls.name,
+            "Total Students": total_students,
+            "Total Fees": total_fees,
+            "Collected": collected,
+            "Outstanding": outstanding
+        })
+        
+    if export == "pdf":
+        filepath = services.ExportService.generate_pdf(report_data, "Class-wise Fee Report", "class_wise_report")
+        return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+    elif export == "excel":
+        filepath = services.ExportService.generate_excel(report_data, "class_wise_report")
+        return FileResponse(filepath, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(filepath))
+        
+    return {"data": report_data}
+
+@app.get("/api/reports/discount")
+def get_discount_report(export: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_role(current_user, ["ADMIN", "ACCOUNTANT"])
+    assignments = db.query(models.StudentFeeAssignment).filter(models.StudentFeeAssignment.discount_amount > 0).all()
+    
+    report_data = []
+    total_discount = 0.0
+    for a in assignments:
+        student = db.query(models.Student).filter(models.Student.id == a.student_id).first()
+        head = db.query(models.FeeHead).filter(models.FeeHead.id == a.fee_head_id).first()
+        discount = float(a.discount_amount)
+        total_discount += discount
+        
+        report_data.append({
+            "Student Name": student.name if student else "Unknown",
+            "Class": student.student_class.name if student and student.student_class else "Unknown",
+            "Fee Head": head.name if head else "Unknown",
+            "Discount Amount": discount,
+            "Discount %": float(a.discount_percentage) if a.discount_percentage else 0.0
+        })
+        
+    summary = {"total_discount_given": total_discount}
+    
+    if export == "pdf":
+        filepath = services.ExportService.generate_pdf(report_data, "Discount Report", "discount_report")
+        return FileResponse(filepath, media_type='application/pdf', filename=os.path.basename(filepath))
+    elif export == "excel":
+        filepath = services.ExportService.generate_excel(report_data, "discount_report")
+        return FileResponse(filepath, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(filepath))
+        
+    return {"summary": summary, "data": report_data}
+
 # --- Staff Management ---
 @app.post("/api/staff", response_model=schemas.Staff)
 def create_staff(staff: schemas.StaffCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -1172,12 +1276,15 @@ def pay_salary(payment: schemas.SalaryPaymentCreate, db: Session = Depends(get_d
     db_payment = models.SalaryPayment(**payment.dict())
     db.add(db_payment)
     
+    # Calculate total payout for ledger
+    net_amount = float(payment.amount_paid) + float(payment.bonus or 0) + float(payment.advance or 0) - float(payment.deductions or 0)
+
     # Auto-post to General Ledger
     staff = db.query(models.Staff).filter(models.Staff.id == payment.staff_id).first()
     ledger_entry = models.GeneralLedger(
         transaction_type='EXPENSE',
         category='SALARY',
-        amount=payment.amount_paid,
+        amount=net_amount,
         description=f"Salary to {staff.name} ({payment.for_month})",
         reference_id=db_payment.id
     )
