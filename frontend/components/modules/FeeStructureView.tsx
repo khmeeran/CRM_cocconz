@@ -40,8 +40,7 @@ export default function FeeStructurePage() {
     }, []);
 
     const getHeaders = () => {
-        const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        return { 'Content-Type': 'application/json' };
     };
 
     const fetchData = async () => {
@@ -53,10 +52,14 @@ export default function FeeStructurePage() {
 
         try {
             const [fRes, bRes, cRes, hRes] = await Promise.all([
-                fetch(`${API_BASE}/api/fee-structures`, { headers: getHeaders() }),
-                fetch(`${API_BASE}/api/branches`, { headers: getHeaders() }),
-                fetch(`${API_BASE}/api/classes`, { headers: getHeaders() }),
-                fetch(`${API_BASE}/api/fee-heads`, { headers: getHeaders() })
+                fetch(`${API_BASE}/api/fee-structures`, {
+      credentials: 'include', headers: getHeaders() }),
+                fetch(`${API_BASE}/api/branches`, {
+      credentials: 'include', headers: getHeaders() }),
+                fetch(`${API_BASE}/api/classes`, {
+      credentials: 'include', headers: getHeaders() }),
+                fetch(`${API_BASE}/api/fee-heads`, {
+      credentials: 'include', headers: getHeaders() })
             ]);
             if (fRes.ok) setFees(await fRes.json());
             
@@ -92,7 +95,8 @@ export default function FeeStructurePage() {
             if (!isEdit) delete (payload as any).id;
             if (payload.term === "Full/One-time") payload.term = null as any;
 
-            const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(payload) });
+            const res = await fetch(url, {
+      credentials: 'include', method, headers: getHeaders(), body: JSON.stringify(payload) });
             
             if (res.ok) {
                 fetchData();
@@ -109,7 +113,8 @@ export default function FeeStructurePage() {
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this fee structure?")) return;
         try {
-            const res = await fetch(`${API_BASE}/api/fee-structures/${id}`, { method: 'DELETE', headers: getHeaders() });
+            const res = await fetch(`${API_BASE}/api/fee-structures/${id}`, {
+      credentials: 'include', method: 'DELETE', headers: getHeaders() });
             if (res.ok) fetchData();
         } catch (error) {
             console.error("Error deleting fee structure:", error);

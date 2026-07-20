@@ -36,8 +36,7 @@ export default function DuesPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     const getHeaders = () => {
-        const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        return { 'Content-Type': 'application/json' };
     };
 
     useEffect(() => {
@@ -45,8 +44,10 @@ export default function DuesPage() {
             setIsLoading(true);
             try {
                 const [sumRes, duesRes] = await Promise.all([
-                    fetch(`${API_BASE}/api/dues/summary`, { headers: getHeaders() }),
-                    fetch(`${API_BASE}/api/dues`, { headers: getHeaders() })
+                    fetch(`${API_BASE}/api/dues/summary`, {
+      credentials: 'include', headers: getHeaders() }),
+                    fetch(`${API_BASE}/api/dues`, {
+      credentials: 'include', headers: getHeaders() })
                 ]);
                 
                 if (sumRes.ok) setSummary(await sumRes.json());

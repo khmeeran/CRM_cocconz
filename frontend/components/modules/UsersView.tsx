@@ -22,9 +22,8 @@ export default function UsersPage() {
 
     const fetchUsers = async () => {
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/users`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
             });
             if (res.ok) {
                 setUsers(await res.json());
@@ -39,13 +38,11 @@ export default function UsersPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             
             const res = await fetch(`${API_BASE}/api/users`, {
+      credentials: 'include',
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                headers: { 'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });
@@ -65,10 +62,10 @@ export default function UsersPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this user?")) return;
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/users/${id}`, {
+      credentials: 'include',
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                
             });
             if (res.ok) {
                 fetchUsers();

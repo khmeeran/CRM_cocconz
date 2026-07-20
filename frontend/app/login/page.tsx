@@ -24,6 +24,7 @@ export default function LoginPage() {
 
         try {
             const response = await fetch(`${API_BASE}/token`, {
+      credentials: 'include',
                 method: 'POST',
                 body: formData,
             });
@@ -31,8 +32,7 @@ export default function LoginPage() {
             if (response.ok) {
                 const data = await response.json();
                 localStorage.setItem('user_role', data.role);
-                localStorage.setItem('access_token', data.access_token);
-                if (data.role === 'ADMIN') router.push('/super-admin');
+                                if (data.role === 'ADMIN') router.push('/super-admin');
                 else if (data.role === 'OFFICE') router.push('/branch-admin');
                 else if (data.role === 'ACCOUNTANT') router.push('/accountant');
                 else if (data.role === 'TEACHER') router.push('/teacher');

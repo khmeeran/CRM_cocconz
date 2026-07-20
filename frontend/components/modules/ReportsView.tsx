@@ -17,8 +17,7 @@ export default function ReportsPage() {
     const [year, setYear] = useState(new Date().getFullYear());
 
     const getHeaders = () => {
-        const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        return { 'Content-Type': 'application/json' };
     };
 
     const fetchReport = async () => {
@@ -31,7 +30,8 @@ export default function ReportsPage() {
             else if (activeTab === 'Outstanding') url = `${API_BASE}/api/reports/outstanding`;
             else if (activeTab === 'Students') url = `${API_BASE}/api/reports/students`;
 
-            const res = await fetch(url, { headers: getHeaders() });
+            const res = await fetch(url, {
+      credentials: 'include', headers: getHeaders() });
             if (res.ok) {
                 setData(await res.json());
             } else {
@@ -56,9 +56,8 @@ export default function ReportsPage() {
             else if (activeTab === 'Branch') url = `${API_BASE}/api/reports/branch?export=${format}`;
             else if (activeTab === 'Outstanding') url = `${API_BASE}/api/reports/outstanding?export=${format}`;
             else if (activeTab === 'Students') url = `${API_BASE}/api/reports/students?export=${format}`;
-
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(url, {
+      credentials: 'include' });
             
             if (res.ok) {
                 const blob = await res.blob();

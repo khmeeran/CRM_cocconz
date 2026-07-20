@@ -32,9 +32,8 @@ export default function ClassesPage() {
         ];
 
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/classes`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
             });
             if (res.ok) {
                 const data = await res.json();
@@ -53,15 +52,13 @@ export default function ClassesPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const url = editingId ? `${API_BASE}/api/classes/${editingId}` : `${API_BASE}/api/classes`;
             const method = editingId ? 'PUT' : 'POST';
             
             const res = await fetch(url, {
+      credentials: 'include',
                 method,
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                headers: { 'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });
@@ -82,10 +79,10 @@ export default function ClassesPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this class?")) return;
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/classes/${id}`, {
+      credentials: 'include',
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                
             });
             if (res.ok) {
                 fetchClasses();

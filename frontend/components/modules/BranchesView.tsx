@@ -35,9 +35,8 @@ export default function BranchesPage() {
         ];
 
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/branches`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
             });
             if (res.ok) {
                 const data = await res.json();
@@ -56,15 +55,13 @@ export default function BranchesPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const url = editingId ? `${API_BASE}/api/branches/${editingId}` : `${API_BASE}/api/branches`;
             const method = editingId ? 'PUT' : 'POST';
             
             const res = await fetch(url, {
+      credentials: 'include',
                 method,
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                headers: { 'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });
@@ -85,10 +82,10 @@ export default function BranchesPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this branch?")) return;
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/branches/${id}`, {
+      credentials: 'include',
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                
             });
             if (res.ok) {
                 fetchBranches();

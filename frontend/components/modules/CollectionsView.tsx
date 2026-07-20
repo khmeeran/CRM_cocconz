@@ -33,13 +33,13 @@ export default function CollectionsPage() {
     const [paymentMode, setPaymentMode] = useState('UPI');
 
     const getHeaders = () => {
-        const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        return { 'Content-Type': 'application/json' };
     };
 
     useEffect(() => {
         // Fetch all students for search
-        fetch(`${API_BASE}/api/students`, { headers: getHeaders() })
+        fetch(`${API_BASE}/api/students`, {
+      credentials: 'include', headers: getHeaders() })
             .then(r => r.json())
             .then(data => setStudents(data.map((s: any) => ({
                 id: s.id, name: s.name, roll_no: s.roll_no, class_name: s.class_name || "Unknown"
@@ -59,8 +59,10 @@ export default function CollectionsPage() {
     const loadStudentData = async (studentId: string) => {
         setIsLoading(true);
         try {
-            const outRes = await fetch(`${API_BASE}/api/students/${studentId}/outstanding`, { headers: getHeaders() });
-            const ledRes = await fetch(`${API_BASE}/api/students/${studentId}/ledger`, { headers: getHeaders() });
+            const outRes = await fetch(`${API_BASE}/api/students/${studentId}/outstanding`, {
+      credentials: 'include', headers: getHeaders() });
+            const ledRes = await fetch(`${API_BASE}/api/students/${studentId}/ledger`, {
+      credentials: 'include', headers: getHeaders() });
             if (outRes.ok) setOutstanding(await outRes.json());
             if (ledRes.ok) setLedger(await ledRes.json());
         } catch (e) {
@@ -103,6 +105,7 @@ export default function CollectionsPage() {
                 payment_mode: paymentMode
             };
             const res = await fetch(`${API_BASE}/api/collections`, {
+      credentials: 'include',
                 method: 'POST',
                 headers: getHeaders(),
                 body: JSON.stringify(payload)

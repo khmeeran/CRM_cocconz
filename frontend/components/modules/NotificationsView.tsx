@@ -32,9 +32,8 @@ export default function NotificationsPage() {
 
     const fetchBroadcasts = async () => {
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/broadcast`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
             });
             if (res.ok) {
                 setBroadcasts(await res.json());
@@ -48,9 +47,8 @@ export default function NotificationsPage() {
 
     const fetchClasses = async () => {
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/classes`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
             });
             if (res.ok) setClasses(await res.json());
         } catch (error) {}
@@ -59,13 +57,11 @@ export default function NotificationsPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             
             const res = await fetch(`${API_BASE}/api/broadcast`, {
+      credentials: 'include',
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                headers: { 'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     target_class_id: formData.target_class_id || null,

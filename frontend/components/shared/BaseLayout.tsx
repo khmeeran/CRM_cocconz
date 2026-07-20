@@ -30,7 +30,8 @@ export default function BaseLayout({ children, navGroups, basePath, roleName }: 
 
   const handleLogout = async () => {
     try {
-        await fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' });
+        await fetch(`${API_BASE}/api/logout`, {
+      credentials: 'include', method: 'POST',  });
     } catch (e) {}
     localStorage.removeItem('user_role');
     router.push('/login');

@@ -51,9 +51,7 @@ export default function StudentManagement() {
   const fetchStudents = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/students`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
+      credentials: 'include'
       });
       if (res.ok) {
         const data = await res.json();
@@ -69,9 +67,7 @@ export default function StudentManagement() {
   const fetchClasses = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/classes`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
+      credentials: 'include'
       });
       if (res.ok) {
         const data = await res.json();
@@ -89,10 +85,9 @@ export default function StudentManagement() {
     
     try {
       const res = await fetch(`${API_BASE}/api/students/${id}`, {
+      credentials: 'include',
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'X-CSRF-Token': document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || ''
+        headers: { 'X-CSRF-Token': document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || ''
         }
       });
       if (res.ok) {
@@ -136,10 +131,10 @@ export default function StudentManagement() {
     try {
       const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || '';
       const res = await fetch(`${API_BASE}/api/students`, {
+      credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
           'X-CSRF-Token': csrfToken
         },
         credentials: 'include',
@@ -176,8 +171,9 @@ export default function StudentManagement() {
     if (!editingStudent) return;
     try {
       const res = await fetch(`${API_BASE}/api/students/${editingStudent.id}`, {
+      credentials: 'include',
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editingStudent.name })
       });
       if (res.ok) {

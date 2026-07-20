@@ -25,8 +25,7 @@ export default function ReceiptsPage() {
     const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
 
     const getHeaders = () => {
-        const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        return { 'Content-Type': 'application/json' };
     };
 
     useEffect(() => {
@@ -36,7 +35,8 @@ export default function ReceiptsPage() {
     const fetchReceipts = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/receipts`, { headers: getHeaders() });
+            const res = await fetch(`${API_BASE}/api/receipts`, {
+      credentials: 'include', headers: getHeaders() });
             if (res.ok) {
                 setReceipts(await res.json());
             }
@@ -49,9 +49,8 @@ export default function ReceiptsPage() {
 
     const handleDownload = async (receipt_no: string) => {
         try {
-            const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
             const res = await fetch(`${API_BASE}/api/receipt/${receipt_no}/pdf`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
             });
             if (res.ok) {
                 const blob = await res.blob();
@@ -71,10 +70,10 @@ export default function ReceiptsPage() {
     };
 
     const handlePrint = (receipt_no: string) => {
-        const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
         const url = `${API_BASE}/api/receipt/${receipt_no}/pdf`;
         
-        fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(url, {
+      credentials: 'include' })
             .then(res => res.blob())
             .then(blob => {
                 const blobUrl = URL.createObjectURL(blob);

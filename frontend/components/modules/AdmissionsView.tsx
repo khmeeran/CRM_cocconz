@@ -42,13 +42,13 @@ export default function AdmissionsPage() {
     }, []);
 
     const getHeaders = () => {
-        const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-        return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        return { 'Content-Type': 'application/json' };
     };
 
     const fetchAdmissions = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admissions`, { headers: getHeaders() });
+            const res = await fetch(`${API_BASE}/api/admissions`, {
+      credentials: 'include', headers: getHeaders() });
             if (res.ok) setAdmissions(await res.json());
         } catch (error) {
             console.error("Error fetching admissions:", error);
@@ -59,7 +59,8 @@ export default function AdmissionsPage() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/classes`, { headers: getHeaders() });
+            const res = await fetch(`${API_BASE}/api/classes`, {
+      credentials: 'include', headers: getHeaders() });
             if (res.ok) setClasses(await res.json());
         } catch (error) {
             console.error("Error fetching classes:", error);
@@ -77,6 +78,7 @@ export default function AdmissionsPage() {
                 : { name: formData.name, class_id: formData.class_id, parent_name: formData.parent_name, primary_phone: formData.primary_phone, status: formData.status };
 
             const res = await fetch(url, {
+      credentials: 'include',
                 method,
                 headers: getHeaders(),
                 body: JSON.stringify(payload)
@@ -115,6 +117,7 @@ export default function AdmissionsPage() {
     const updateStatus = async (id: string, newStatus: string) => {
         try {
             const res = await fetch(`${API_BASE}/api/admissions/${id}`, {
+      credentials: 'include',
                 method: 'PUT',
                 headers: getHeaders(),
                 body: JSON.stringify({ status: newStatus })
