@@ -911,13 +911,24 @@ def download_receipt_pdf(receipt_no: str, db: Session = Depends(get_db), current
     
     student = db.query(models.Student).filter(models.Student.id == payment.student_id).first()
     
+    fee_head_name = "General Fee"
+    if payment.fee_head_id:
+        fee_head_obj = db.query(models.FeeHead).filter(models.FeeHead.id == payment.fee_head_id).first()
+        if fee_head_obj: fee_head_name = fee_head_obj.name
+        
+    class_name_str = f"{student.student_class.name} - {student.student_class.section}" if student.student_class else "N/A"
+    
+    # User associated branch lookup can go here once Multi-Tenant is added.
+    # For now we use the system default.
+    branch_name_str = "Cocoonz Main"
+    
     pdf_bytes = services.ExportService.generate_receipt_pdf(
         receipt_no=payment.receipt_no,
         student_name=student.name,
         roll_no=student.roll_no,
-        branch="Cocoonz Main",
-        class_name="N/A",
-        fee_head="General Fee",
+        branch=branch_name_str,
+        class_name=class_name_str,
+        fee_head=fee_head_name,
         amount=float(payment.amount),
         balance=float(payment.balance_due),
         date=payment.payment_date.strftime("%Y-%m-%d"),
