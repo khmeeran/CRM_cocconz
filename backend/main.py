@@ -162,6 +162,8 @@ if not SECRET_KEY or len(SECRET_KEY) < 32 or SECRET_KEY == "dev_secret_key":
 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 480))
+ENV = os.getenv("ENV", "production")
+IS_PRODUCTION = ENV.lower() == "production"
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
@@ -311,7 +313,7 @@ async def login_for_access_token(request: Request, response: Response, form_data
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False, # Set to True in actual prod with HTTPS
+        secure=IS_PRODUCTION,
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/"
@@ -323,7 +325,7 @@ async def login_for_access_token(request: Request, response: Response, form_data
         key="csrf_token",
         value=csrf_token,
         httponly=False,
-        secure=False,
+        secure=IS_PRODUCTION,
         samesite="lax",
         path="/"
     )
@@ -332,8 +334,8 @@ async def login_for_access_token(request: Request, response: Response, form_data
 
 @app.post("/api/logout")
 def logout(response: Response):
-    response.delete_cookie("access_token")
-    response.delete_cookie("csrf_token")
+    response.delete_cookie("access_token", path="/", secure=IS_PRODUCTION, httponly=True, samesite="lax")
+    response.delete_cookie("csrf_token", path="/", secure=IS_PRODUCTION, httponly=False, samesite="lax")
     return {"status": "success"}
 
 @app.post("/api/users", response_model=schemas.User)
