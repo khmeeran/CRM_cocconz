@@ -76,8 +76,9 @@ class Student(Base):
     
     parent = relationship("Parent", back_populates="students")
     student_class = relationship("Class", back_populates="students")
-    attendance = relationship("Attendance", back_populates="student")
-    fees = relationship("FeeSummary", back_populates="student", uselist=False)
+    attendance = relationship("Attendance", back_populates="student", cascade="all, delete-orphan")
+    fees = relationship("FeeSummary", back_populates="student", uselist=False, cascade="all, delete-orphan")
+    payments = relationship("PaymentHistory", back_populates="student", cascade="all, delete-orphan")
 
 class StudentFeeAssignment(Base):
     __tablename__ = "student_fee_assignments"
@@ -127,6 +128,8 @@ class PaymentHistory(Base):
     balance_due = Column(Numeric(10, 2), default=0.00, nullable=False)
     receipt_status = Column(String, default='ACTIVE', nullable=False, index=True)
     remarks = Column(String, nullable=True)
+    
+    student = relationship("Student", back_populates="payments")
 
 class Broadcast(Base):
     __tablename__ = "broadcasts"

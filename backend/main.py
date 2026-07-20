@@ -533,7 +533,7 @@ def create_student(student_data: schemas.StudentCreate, db: Session = Depends(ge
     if not parent_id:
         raise HTTPException(status_code=400, detail="Parent information is required")
 
-    student_dict = student_data.dict(exclude={'parent', 'total_fees'})
+    student_dict = student_data.dict(exclude={'parent'})
     student_dict['parent_id'] = parent_id
     
     db_student = models.Student(**student_dict)
@@ -541,12 +541,19 @@ def create_student(student_data: schemas.StudentCreate, db: Session = Depends(ge
     db.flush()
     db.refresh(db_student)
     
-    # Initialize fee summary with custom total
+    # Calculate fees securely on server-side
+    from sqlalchemy import func
+    total_fees = db.query(func.sum(models.FeeStructure.amount)).filter(
+        models.FeeStructure.class_id == db_student.class_id,
+        models.FeeStructure.is_active == True
+    ).scalar() or 0
+    
+    # Initialize fee summary with computed total
     fee_summary = models.FeeSummary(
         student_id=db_student.id, 
-        total_amount=student_data.total_fees, 
+        total_amount=total_fees, 
         paid_amount=0, 
-        pending_balance=student_data.total_fees
+        pending_balance=total_fees
     )
     db.add(fee_summary)
     

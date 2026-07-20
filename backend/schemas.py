@@ -131,8 +131,7 @@ class StudentBase(BaseModel):
     status: Optional[str] = "ACTIVE"
 
 class StudentCreate(StudentBase):
-    parent: Optional[ParentCreate] = None # Option to create parent along with student
-    total_fees: Optional[Decimal] = 0
+    parent: Optional[ParentCreate] = None
 
 class Student(StudentBase):
     id: str
