@@ -524,7 +524,7 @@ def create_student(student_data: schemas.StudentCreate, db: Session = Depends(ge
         else:
             new_parent = models.Parent(**student_data.parent.dict())
             db.add(new_parent)
-            db.commit()
+            db.flush()
             db.refresh(new_parent)
             parent_id = new_parent.id
     
@@ -536,7 +536,7 @@ def create_student(student_data: schemas.StudentCreate, db: Session = Depends(ge
     
     db_student = models.Student(**student_dict)
     db.add(db_student)
-    db.commit()
+    db.flush()
     db.refresh(db_student)
     
     # Initialize fee summary with custom total
@@ -547,6 +547,8 @@ def create_student(student_data: schemas.StudentCreate, db: Session = Depends(ge
         pending_balance=student_data.total_fees
     )
     db.add(fee_summary)
+    
+    # Final atomic commit for all three tables
     db.commit()
     
     return db_student
