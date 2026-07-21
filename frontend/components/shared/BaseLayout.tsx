@@ -12,6 +12,7 @@ export default function BaseLayout({ children, navGroups, basePath, roleName }: 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   // Command Palette Logic
   useEffect(() => {
@@ -152,8 +153,38 @@ export default function BaseLayout({ children, navGroups, basePath, roleName }: 
               <Bell size={20} />
               <span style={{ position: 'absolute', top: '2px', right: '2px', width: '8px', height: '8px', backgroundColor: '#ef4444', borderRadius: '50%', border: '1px solid #0A1128' }}></span>
             </button>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(to top right, #0066FF, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 700, border: '1px solid rgba(255,255,255,0.2)' }}>
-              {roleName.substring(0, 2).toUpperCase()}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(to top right, #0066FF, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 700, border: '1px solid rgba(255,255,255,0.2)', color: 'white', cursor: 'pointer', padding: 0 }}
+              >
+                {roleName.substring(0, 2).toUpperCase()}
+              </button>
+
+              {isProfileMenuOpen && (
+                <>
+                  <div 
+                    style={{ position: 'fixed', inset: 0, zIndex: 90 }} 
+                    onClick={() => setIsProfileMenuOpen(false)}
+                  />
+                  <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 0.5rem)', width: '200px', backgroundColor: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '0.75rem', overflow: 'hidden', zIndex: 100, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'white', margin: 0 }}>Signed in as</p>
+                      <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{roleName.toLowerCase()}@cocoonz</p>
+                    </div>
+                    <div style={{ padding: '0.5rem' }}>
+                      <button style={{ width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#e5e7eb', background: 'transparent', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                        Account Settings
+                      </button>
+                    </div>
+                    <div style={{ padding: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#EF4444', background: 'transparent', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                        <LogOut size={16} /> Sign out
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
