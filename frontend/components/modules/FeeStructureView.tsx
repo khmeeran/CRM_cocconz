@@ -70,7 +70,12 @@ export default function FeeStructurePage() {
                 setBranches(mockBranches);
             }
 
-            if (cRes.ok) setClasses(await cRes.json());
+            if (cRes.ok) {
+                const fetchedClasses = await cRes.json();
+                console.log("API response for /api/classes:", fetchedClasses);
+                setClasses(fetchedClasses);
+                console.log("State after setClasses():", fetchedClasses);
+            }
             if (hRes.ok) setFeeHeads(await hRes.json());
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -172,7 +177,10 @@ export default function FeeStructurePage() {
                     </select>
                     <select value={classFilter} onChange={e => setClassFilter(e.target.value)} style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', outline: 'none' }}>
                         <option value="">All Classes</option>
-                        {classes.filter(c => !branchFilter || c.branch_id === branchFilter).map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
+                        {classes.filter(c => {
+                            const isMatch = !branchFilter || c.branch_id === branchFilter;
+                            return isMatch;
+                        }).map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
                     </select>
                     <button onClick={openAddModal} style={{ backgroundColor: '#0066FF', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                         <Plus size={18} /> New Fee
@@ -243,7 +251,13 @@ export default function FeeStructurePage() {
                                     <label style={{ display: 'block', fontSize: '0.875rem', color: '#9CA3AF', marginBottom: '0.5rem' }}>Class *</label>
                                     <select required value={formData.class_id} onChange={e => setFormData({...formData, class_id: e.target.value})} style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }}>
                                         <option value="" disabled>Select Class</option>
-                                        {classes.filter(c => !formData.branch_id || c.branch_id === formData.branch_id).map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
+                                        {(() => {
+                                            const filteredClasses = classes.filter(c => !formData.branch_id || c.branch_id === formData.branch_id);
+                                            console.log("Selected Branch ID:", formData.branch_id);
+                                            console.log("All Classes from state:", classes);
+                                            console.log("Filtered Classes for Dropdown (Data passed to <select>):", filteredClasses);
+                                            return filteredClasses.map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>);
+                                        })()}
                                     </select>
                                 </div>
                             </div>
