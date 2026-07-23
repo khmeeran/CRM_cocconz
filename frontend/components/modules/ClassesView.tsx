@@ -49,7 +49,7 @@ export default function ClassesPage() {
             }
 
             if (cRes.ok) {
-                const data = await res.json();
+                const data = await cRes.json();
                 setClasses(data && data.length > 0 ? data : mockClasses);
             } else {
                 setClasses(mockClasses);
