@@ -52,7 +52,7 @@ class Class(Base):
     division = Column(String, nullable=True)
     branch_id = Column(String, ForeignKey("branches.id"), nullable=True)
     academic_year = Column(String, nullable=True, default="2026-2027")
-    __table_args__ = (UniqueConstraint('name', 'section', name='_class_section_uc'),)
+    __table_args__ = (UniqueConstraint('name', 'section', 'branch_id', name='_class_section_branch_uc'),)
     students = relationship("Student", back_populates="student_class")
 
 class Parent(Base):

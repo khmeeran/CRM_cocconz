@@ -9,14 +9,21 @@ interface ApiClass {
     name: string;
     section: string;
     division: string;
+    branch_id?: string;
+}
+
+interface Branch {
+    id: string;
+    name: string;
 }
 
 export default function ClassesPage() {
     const [classes, setClasses] = useState<ApiClass[]>([]);
+    const [branches, setBranches] = useState<Branch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState<Partial<ApiClass>>({
-        name: '', section: '', division: 'Pre-Primary'
+        name: '', section: '', division: 'Pre-Primary', branch_id: ''
     });
     const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -32,10 +39,16 @@ export default function ClassesPage() {
         ];
 
         try {
-            const res = await fetch(`${API_BASE}/api/classes`, {
-      credentials: 'include'
-            });
-            if (res.ok) {
+            const [cRes, bRes] = await Promise.all([
+                fetch(`${API_BASE}/api/classes`, { credentials: 'include' }),
+                fetch(`${API_BASE}/api/branches`, { credentials: 'include' })
+            ]);
+            
+            if (bRes.ok) {
+                setBranches(await bRes.json());
+            }
+
+            if (cRes.ok) {
                 const data = await res.json();
                 setClasses(data && data.length > 0 ? data : mockClasses);
             } else {
@@ -66,7 +79,7 @@ export default function ClassesPage() {
             if (res.ok) {
                 fetchClasses();
                 setIsModalOpen(false);
-                setFormData({ name: '', section: '', division: 'Pre-Primary' });
+                setFormData({ name: '', section: '', division: 'Pre-Primary', branch_id: '' });
                 setEditingId(null);
             } else {
                 alert("Operation failed");
@@ -99,7 +112,7 @@ export default function ClassesPage() {
     };
 
     const openAddModal = () => {
-        setFormData({ name: '', section: '', division: 'Pre-Primary' });
+        setFormData({ name: '', section: '', division: 'Pre-Primary', branch_id: branches.length > 0 ? branches[0].id : '' });
         setEditingId(null);
         setIsModalOpen(true);
     };
@@ -136,6 +149,7 @@ export default function ClassesPage() {
                             <tr style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#9CA3AF', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 <th style={{ padding: '1rem 1.5rem', fontWeight: 600 }}>Class Name</th>
                                 <th style={{ padding: '1rem 1.5rem', fontWeight: 600 }}>Section</th>
+                                <th style={{ padding: '1rem 1.5rem', fontWeight: 600 }}>Branch</th>
                                 <th style={{ padding: '1rem 1.5rem', fontWeight: 600 }}>Division</th>
                                 <th style={{ padding: '1rem 1.5rem', fontWeight: 600, textAlign: 'right' }}>Actions</th>
                             </tr>
@@ -149,6 +163,9 @@ export default function ClassesPage() {
                                 <tr key={cls.id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                                     <td style={{ padding: '1rem 1.5rem', fontWeight: 500, color: 'white' }}>{cls.name}</td>
                                     <td style={{ padding: '1rem 1.5rem', color: '#9CA3AF' }}>{cls.section}</td>
+                                    <td style={{ padding: '1rem 1.5rem', color: '#9CA3AF' }}>
+                                        {branches.find(b => b.id === cls.branch_id)?.name || 'Global'}
+                                    </td>
                                     <td style={{ padding: '1rem 1.5rem', color: '#9CA3AF' }}>
                                         <span style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>{cls.division}</span>
                                     </td>
@@ -171,6 +188,13 @@ export default function ClassesPage() {
                     <div style={{ width: '100%', maxWidth: '400px', backgroundColor: '#101D42', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
                         <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem' }}>{editingId ? 'Edit Class' : 'New Class'}</h2>
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.875rem', color: '#9CA3AF', marginBottom: '0.5rem' }}>Branch *</label>
+                                <select required value={formData.branch_id || ''} onChange={e => setFormData({...formData, branch_id: e.target.value})} style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }}>
+                                    <option value="" disabled>Select Branch</option>
+                                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                </select>
+                            </div>
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.875rem', color: '#9CA3AF', marginBottom: '0.5rem' }}>Class Name *</label>
                                 <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. LKG, Grade 1" style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }} />
