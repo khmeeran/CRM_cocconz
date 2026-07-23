@@ -103,6 +103,7 @@ class ClassBase(BaseModel):
     name: str
     section: str
     division: Optional[str] = None
+    branch_id: Optional[str] = None
 
 class ClassCreate(ClassBase):
     pass

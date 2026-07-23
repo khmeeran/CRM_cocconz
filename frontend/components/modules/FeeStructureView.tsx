@@ -5,7 +5,7 @@ import { Plus, Edit2, Trash2, Search, CheckCircle, XCircle } from 'lucide-react'
 import { API_BASE } from '@/lib/api';
 
 interface Branch { id: string; name: string; }
-interface StudentClass { id: string; name: string; section: string; }
+interface StudentClass { id: string; name: string; section: string; branch_id?: string; }
 interface FeeHead { id: string; name: string; }
 
 interface FeeStructure {
@@ -166,13 +166,13 @@ export default function FeeStructurePage() {
                         <Search size={16} color="#9CA3AF" />
                         <input type="text" placeholder="Search heads..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ background: 'none', border: 'none', color: 'white', padding: '0.5rem', outline: 'none', width: '150px' }} />
                     </div>
-                    <select value={branchFilter} onChange={e => setBranchFilter(e.target.value)} style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', outline: 'none' }}>
+                    <select value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setClassFilter(''); }} style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', outline: 'none' }}>
                         <option value="">All Branches</option>
                         {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                     </select>
                     <select value={classFilter} onChange={e => setClassFilter(e.target.value)} style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', outline: 'none' }}>
                         <option value="">All Classes</option>
-                        {classes.map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
+                        {classes.filter(c => !branchFilter || c.branch_id === branchFilter).map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
                     </select>
                     <button onClick={openAddModal} style={{ backgroundColor: '#0066FF', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                         <Plus size={18} /> New Fee
@@ -234,7 +234,7 @@ export default function FeeStructurePage() {
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <div style={{ flex: 1 }}>
                                     <label style={{ display: 'block', fontSize: '0.875rem', color: '#9CA3AF', marginBottom: '0.5rem' }}>Branch *</label>
-                                    <select required value={formData.branch_id} onChange={e => setFormData({...formData, branch_id: e.target.value})} style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }}>
+                                    <select required value={formData.branch_id} onChange={e => setFormData({...formData, branch_id: e.target.value, class_id: ''})} style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }}>
                                         <option value="" disabled>Select Branch</option>
                                         {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                                     </select>
@@ -243,7 +243,7 @@ export default function FeeStructurePage() {
                                     <label style={{ display: 'block', fontSize: '0.875rem', color: '#9CA3AF', marginBottom: '0.5rem' }}>Class *</label>
                                     <select required value={formData.class_id} onChange={e => setFormData({...formData, class_id: e.target.value})} style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }}>
                                         <option value="" disabled>Select Class</option>
-                                        {classes.map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
+                                        {classes.filter(c => !formData.branch_id || c.branch_id === formData.branch_id).map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
                                     </select>
                                 </div>
                             </div>
