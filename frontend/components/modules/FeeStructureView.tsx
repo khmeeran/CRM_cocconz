@@ -178,7 +178,7 @@ export default function FeeStructurePage() {
                     <select value={classFilter} onChange={e => setClassFilter(e.target.value)} style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', outline: 'none' }}>
                         <option value="">All Classes</option>
                         {classes.filter(c => {
-                            const isMatch = !branchFilter || c.branch_id === branchFilter;
+                            const isMatch = !branchFilter || c.branch_id === branchFilter || !c.branch_id;
                             return isMatch;
                         }).map(c => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
                     </select>
@@ -252,7 +252,7 @@ export default function FeeStructurePage() {
                                     <select required value={formData.class_id} onChange={e => setFormData({...formData, class_id: e.target.value})} style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', outline: 'none' }}>
                                         <option value="" disabled>Select Class</option>
                                         {(() => {
-                                            const filteredClasses = classes.filter(c => !formData.branch_id || c.branch_id === formData.branch_id);
+                                            const filteredClasses = classes.filter(c => !formData.branch_id || c.branch_id === formData.branch_id || !c.branch_id);
                                             console.log("Selected Branch ID:", formData.branch_id);
                                             console.log("All Classes from state:", classes);
                                             console.log("Filtered Classes for Dropdown (Data passed to <select>):", filteredClasses);
