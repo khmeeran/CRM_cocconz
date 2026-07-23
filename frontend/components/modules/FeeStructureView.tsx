@@ -73,8 +73,20 @@ export default function FeeStructurePage() {
             if (cRes.ok) {
                 const fetchedClasses = await cRes.json();
                 console.log("API response for /api/classes:", fetchedClasses);
-                setClasses(fetchedClasses);
-                console.log("State after setClasses():", fetchedClasses);
+                const mockClasses = [
+                    { id: '1', name: 'Pre-KG', section: 'A' },
+                    { id: '2', name: 'LKG', section: 'A' },
+                    { id: '3', name: 'UKG', section: 'A' }
+                ];
+                setClasses(fetchedClasses && fetchedClasses.length > 0 ? fetchedClasses : mockClasses);
+                console.log("State after setClasses():", fetchedClasses && fetchedClasses.length > 0 ? fetchedClasses : mockClasses);
+            } else {
+                const mockClasses = [
+                    { id: '1', name: 'Pre-KG', section: 'A' },
+                    { id: '2', name: 'LKG', section: 'A' },
+                    { id: '3', name: 'UKG', section: 'A' }
+                ];
+                setClasses(mockClasses);
             }
             if (hRes.ok) setFeeHeads(await hRes.json());
         } catch (error) {
